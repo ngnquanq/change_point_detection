@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+
+# Project-specific large artifacts
+models/
+data/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+.claude/
+.pytest_cache/
+
