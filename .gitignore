@@ -9,8 +9,8 @@ build/
 venv/
 
 # Project-specific large artifacts
-models/
-data/
+# models/
+# data/
 
 # Notebooks checkpoints
 .ipynb_checkpoints/
