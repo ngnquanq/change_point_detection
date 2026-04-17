@@ -250,6 +250,7 @@ def main() -> None:
         model = ResidualCNN(
             n=cfg.input_length(), n_blocks=cfg.model.n_blocks,
             base_channels=cfg.model.base_channels, kernel_size=cfg.model.kernel_size,
+            dropout=cfg.model.dropout,
         )
     model.load_state_dict(torch.load(checkpoint_dir / "best_model.pt",
                                      map_location=device, weights_only=True))

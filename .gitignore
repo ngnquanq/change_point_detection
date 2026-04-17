@@ -22,3 +22,6 @@ venv/
 .claude/
 .pytest_cache/
 
+rwActData
+models
+data

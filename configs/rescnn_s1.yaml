@@ -1,6 +1,7 @@
 experiment_name: rescnn_s1
 
-simulation:
+dataset:
+  source: simulated
   n: 100
   N: 10000
   noise_type: S1
@@ -14,6 +15,7 @@ model:
   n_blocks: 21
   base_channels: 32
   kernel_size: 8
+  dropout: 0.3
   use_squared: false
   use_cross_product: false
 

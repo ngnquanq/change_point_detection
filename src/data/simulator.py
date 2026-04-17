@@ -21,10 +21,10 @@ def _generate_ar1_noise(n: int, rho: float, rng: np.random.Generator) -> np.ndar
     return x
 
 
-def _generate_cauchy_noise(n: int, rng: np.random.Generator) -> np.ndarray:
-    """Standard Cauchy noise (heavy-tailed)."""
+def _generate_cauchy_noise(n: int, rng: np.random.Generator, scale: float = 0.3) -> np.ndarray:
+    """Cauchy noise with given scale. Paper S3 uses Cauchy(0, 0.3)."""
     u = rng.uniform(0.0, 1.0, size=n)
-    return np.tan(np.pi * (u - 0.5))
+    return scale * np.tan(np.pi * (u - 0.5))
 
 
 def simulate_sequence(
@@ -34,6 +34,8 @@ def simulate_sequence(
     rho: float = 0.0,
     mu_range: tuple[float, float] = (-2.0, 2.0),
     sigma: float = 1.0,
+    cauchy_scale: float = 0.3,
+    snr_based_mu: bool = False,
     rng: np.random.Generator | None = None,
 ) -> tuple[np.ndarray, int | None]:
     """Generate a single time series of length n.
@@ -43,8 +45,10 @@ def simulate_sequence(
         has_change: whether the sequence contains a change point
         noise_type: "S1" (iid Gaussian), "S1_prime"/"S2" (AR(1)), "S3" (Cauchy)
         rho: AR(1) coefficient (used for S1_prime/S2)
-        mu_range: (low, high) for drawing mu_L and mu_R
+        mu_range: (low, high) for drawing mu_L and mu_R (when snr_based_mu=False)
         sigma: noise std for Gaussian cases
+        cauchy_scale: scale parameter for Cauchy noise (paper uses 0.3)
+        snr_based_mu: if True, use paper's SNR-based formula for mu_R (Section 5)
         rng: numpy random generator; created if None
 
     Returns:
@@ -60,7 +64,7 @@ def simulate_sequence(
     elif noise_type in ("S1_prime", "S2"):
         noise = _generate_ar1_noise(n, rho, rng)
     elif noise_type == "S3":
-        noise = _generate_cauchy_noise(n, rng)
+        noise = _generate_cauchy_noise(n, rng, scale=cauchy_scale)
     else:
         raise ValueError(f"Unknown noise_type: {noise_type!r}")
 
@@ -76,8 +80,18 @@ def simulate_sequence(
         tau = int(rng.integers(1, n - 1))  # [1, n-2] inclusive
 
         mu_l = rng.uniform(mu_low, mu_high)
-        # Ensure mu_r != mu_l by drawing from a gap or shifting
-        mu_r = rng.uniform(mu_low, mu_high)
+
+        if snr_based_mu:
+            # Paper Section 5: b = sqrt(8n*log(20n) / (tau*(n-tau)))
+            # mu_R | tau ~ Unif([-1.5b, -0.5b] ∪ [0.5b, 1.5b])
+            b = np.sqrt(8 * n * np.log(20 * n) / (tau * (n - tau)))
+            if rng.random() < 0.5:
+                mu_r = mu_l + rng.uniform(0.5 * b, 1.5 * b)
+            else:
+                mu_r = mu_l + rng.uniform(-1.5 * b, -0.5 * b)
+        else:
+            # Simple: draw mu_r from uniform range
+            mu_r = rng.uniform(mu_low, mu_high)
 
         x = np.empty(n)
         x[:tau] = mu_l + noise[:tau]
@@ -92,6 +106,8 @@ def simulate_dataset(
     rho: float = 0.0,
     mu_range: tuple[float, float] = (-2.0, 2.0),
     sigma: float = 1.0,
+    cauchy_scale: float = 0.3,
+    snr_based_mu: bool = False,
     seed: int = 42,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Generate a balanced dataset: N/2 with change, N/2 without.
@@ -117,6 +133,8 @@ def simulate_dataset(
             rho=rho,
             mu_range=mu_range,
             sigma=sigma,
+            cauchy_scale=cauchy_scale,
+            snr_based_mu=snr_based_mu,
             rng=rng,
         )
         X[i] = x
@@ -132,6 +150,8 @@ def simulate_dataset(
             rho=rho,
             mu_range=mu_range,
             sigma=sigma,
+            cauchy_scale=cauchy_scale,
+            snr_based_mu=snr_based_mu,
             rng=rng,
         )
         X[i] = x

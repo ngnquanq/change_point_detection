@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.registry import MODEL_REGISTRY
+
 
 class ResidualBlock(nn.Module):
     """Single residual block for 1-D time series.
@@ -53,16 +55,22 @@ class ResidualBlock(nn.Module):
         return out
 
 
+@MODEL_REGISTRY.register("rescnn")
 class ResidualCNN(nn.Module):
     """Deep Residual CNN for change-point detection.
 
-    Architecture (following paper — 21 residual blocks):
+    Architecture (following paper — 21 residual blocks, Section 6 & Supp. C.3):
       Input projection: Conv1d(in_ch, base_ch, 1)
       Blocks 1–7:   base_ch   -> base_ch
       Block 8:      base_ch   -> base_ch*2  (channel expansion)
       Blocks 9–21:  base_ch*2 -> base_ch*2
       AdaptiveAvgPool1d(1) -> flatten
-      FC(base_ch*2, 64) -> ReLU -> FC(64, 1)   [raw logits]
+      Dense(50) -> ReLU -> Dropout(0.3)
+      Dense(40) -> ReLU -> Dropout(0.3)
+      Dense(30) -> ReLU -> Dropout(0.3)
+      Dense(20) -> ReLU -> Dropout(0.3)
+      Dense(10) -> ReLU -> Dropout(0.3)
+      Dense(1)   [raw logits]
 
     Outputs raw logits (use BCEWithLogitsLoss during training).
 
@@ -72,17 +80,25 @@ class ResidualCNN(nn.Module):
         base_channels: base channel count (default 32)
         kernel_size: conv kernel size (default 8)
         in_channels: 1 for raw series; >1 when multi-channel pre-transforms applied
+        dropout: dropout rate for dense layers (default 0.3, following paper)
     """
 
-    def __init__(
-        self,
-        n: int,
-        n_blocks: int = 21,
-        base_channels: int = 32,
-        kernel_size: int = 8,
-        in_channels: int = 1,
-    ) -> None:
+    def __init__(self, cfg=None, **kwargs) -> None:
         super().__init__()
+        if cfg is not None:
+            n = cfg.input_length()
+            n_blocks = cfg.model.n_blocks
+            base_channels = cfg.model.base_channels
+            kernel_size = cfg.model.kernel_size
+            in_channels = 1
+            dropout = cfg.model.dropout
+        else:
+            n = kwargs.get("n", 100)
+            n_blocks = kwargs.get("n_blocks", 21)
+            base_channels = kwargs.get("base_channels", 32)
+            kernel_size = kwargs.get("kernel_size", 8)
+            in_channels = kwargs.get("in_channels", 1)
+            dropout = kwargs.get("dropout", 0.3)
         self.n = n
         ch = base_channels
         transition_block = n_blocks // 3  # block index where channels expand
@@ -104,11 +120,24 @@ class ResidualCNN(nn.Module):
         self.blocks = nn.Sequential(*blocks)
         self.pool = nn.AdaptiveAvgPool1d(1)
 
-        # Classifier head
+        # Classifier head — 5 dense layers with Dropout (paper Supp. C.3, Figure S5)
         self.head = nn.Sequential(
-            nn.Linear(current_ch, 64),
+            nn.Linear(current_ch, 50),
             nn.ReLU(inplace=True),
-            nn.Linear(64, 1),
+            nn.Dropout(dropout),
+            nn.Linear(50, 40),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(40, 30),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(30, 20),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(20, 10),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout),
+            nn.Linear(10, 1),
         )
 
     def forward(self, x: Tensor) -> Tensor:

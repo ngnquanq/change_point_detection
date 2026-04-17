@@ -6,7 +6,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.registry import MODEL_REGISTRY
 
+
+@MODEL_REGISTRY.register("mlp")
 class MLPDetector(nn.Module):
     """Single-hidden-layer MLP for change-point binary classification.
 
@@ -22,8 +25,14 @@ class MLPDetector(nn.Module):
         variant: "full" or "pruned"
     """
 
-    def __init__(self, n: int, variant: str = "pruned") -> None:
+    def __init__(self, cfg=None, **kwargs) -> None:
         super().__init__()
+        if cfg is not None:
+            n = cfg.input_length()
+            variant = cfg.model.mlp_variant
+        else:
+            n = kwargs.get("n", 100)
+            variant = kwargs.get("variant", "pruned")
         if variant == "full":
             h = 2 * n - 2
         elif variant == "pruned":

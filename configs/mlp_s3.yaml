@@ -1,6 +1,7 @@
 experiment_name: mlp_s3
 
-simulation:
+dataset:
+  source: simulated
   n: 100
   N: 10000
   noise_type: S3

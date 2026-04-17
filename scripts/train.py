@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """Train a change-point detection model from a YAML config.
 
+Supports both simulated data and HASC accelerometer data via registry.
+
 Usage:
-    python scripts/train.py --config configs/mlp_s1.yaml
-    python scripts/train.py --config configs/rescnn_s1.yaml --device cuda
+    python scripts/train.py --config configs/rescnn_s1.yaml
+    python scripts/train.py --config configs/rescnn_hasc.yaml --device auto
 """
 from __future__ import annotations
 
@@ -18,105 +20,76 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import ExperimentConfig, MODELS_DIR
-from src.data.simulator import simulate_dataset
-from src.data.transforms import augment_reversed, build_preprocessing_pipeline
+from src.registry import DATASET_REGISTRY, MODEL_REGISTRY
 from src.data.dataset import make_dataloaders
-from src.models.mlp import MLPDetector
-from src.models.rescnn import ResidualCNN
 from src.training.trainer import Trainer
 
+# Import to trigger registration
+import src.data.datasets.simulated  # noqa: F401  registers "simulated"
+import src.data.datasets.hasc       # noqa: F401  registers "hasc"
+import src.models.rescnn             # noqa: F401  registers "rescnn"
+import src.models.mlp                # noqa: F401  registers "mlp"
 
-def build_model(cfg: ExperimentConfig) -> torch.nn.Module:
-    n_input = cfg.input_length()
-    if cfg.model.architecture == "mlp":
-        return MLPDetector(n=n_input, variant=cfg.model.mlp_variant)
-    elif cfg.model.architecture == "rescnn":
-        return ResidualCNN(
-            n=n_input,
-            n_blocks=cfg.model.n_blocks,
-            base_channels=cfg.model.base_channels,
-            kernel_size=cfg.model.kernel_size,
-            in_channels=1,
-        )
-    else:
-        raise ValueError(f"Unknown architecture: {cfg.model.architecture!r}")
+
+def auto_detect_device(requested: str) -> torch.device:
+    """Select device: MPS > CUDA > CPU."""
+    if requested != "auto":
+        return torch.device(requested)
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a change-point detection model")
     parser.add_argument("--config", type=str, required=True, help="Path to YAML config")
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="auto",
-        help="Device: 'auto', 'cpu', or 'cuda'",
-    )
+    parser.add_argument("--device", type=str, default="auto",
+                        help="Device: 'auto', 'cpu', 'cuda', or 'mps'")
     args = parser.parse_args()
 
     cfg = ExperimentConfig.from_yaml(args.config)
-    print(f"Experiment: {cfg.experiment_name}")
+    device = auto_detect_device(args.device)
 
-    if args.device == "auto":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device(args.device)
-    print(f"Device: {device}")
+    print(f"Experiment : {cfg.experiment_name}")
+    print(f"Dataset    : {cfg.dataset.source}")
+    print(f"Model      : {cfg.model.architecture}")
+    print(f"Device     : {device}")
 
-    # 1. Simulate data
-    print(f"Simulating {cfg.simulation.N} sequences of length {cfg.simulation.n} "
-          f"({cfg.simulation.noise_type} noise)...")
-    X, y, taus = simulate_dataset(
-        N=cfg.simulation.N,
-        n=cfg.simulation.n,
-        noise_type=cfg.simulation.noise_type,
-        rho=cfg.simulation.rho,
-        mu_range=cfg.simulation.mu_range,
-        sigma=cfg.simulation.sigma,
-        seed=cfg.simulation.seed,
-    )
+    # 1. Load data — registry looks up class by name, passes cfg
+    dataset = DATASET_REGISTRY.build(cfg.dataset.source, cfg=cfg)
+    X, y, taus = dataset.load()
 
-    # 2. Augment with reversed sequences (before split)
-    if cfg.training.augment_reversed:
-        X, y, taus = augment_reversed(X, y, taus)
-        print(f"After augmentation: {len(X)} sequences")
-
-    # 3. Preprocess
-    preprocess = build_preprocessing_pipeline(
-        noise_type=cfg.simulation.noise_type,
-        use_squared=cfg.model.use_squared,
-        use_cross_product=cfg.model.use_cross_product,
-    )
-    X_proc = preprocess(X)
-
-    # 4. Build dataloaders
+    # 2. Build dataloaders
     flatten = cfg.model.architecture == "mlp"
     train_loader, val_loader = make_dataloaders(
-        X_proc, y, taus,
+        X, y, taus,
         batch_size=cfg.training.batch_size,
         val_fraction=cfg.training.val_fraction,
         flatten=flatten,
-        seed=cfg.simulation.seed,
+        seed=cfg.dataset.seed,
     )
     print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
 
-    # 5. Build model
-    model = build_model(cfg)
-    print(f"Model: {cfg.model.architecture} | Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    # 3. Build model — registry looks up class by name, passes cfg
+    model = MODEL_REGISTRY.build(cfg.model.architecture, cfg=cfg)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"Parameters : {n_params:,}")
 
-    # 6. Train
+    # 4. Train
     checkpoint_dir = MODELS_DIR / cfg.experiment_name
     trainer = Trainer(model, cfg.training, device, checkpoint_dir)
     history = trainer.train(train_loader, val_loader)
 
-    # 7. Save config and history
+    # 5. Save config + history
     cfg.save_yaml(checkpoint_dir / "config.yaml")
     with open(checkpoint_dir / "history.json", "w") as f:
         json.dump(history, f, indent=2)
 
-    final_val_acc = history["val_acc"][-1]
     best_val_acc = max(history["val_acc"])
     print(f"\nDone. Best val accuracy: {best_val_acc:.4f}")
-    print(f"Checkpoint saved to: {checkpoint_dir / 'best_model.pt'}")
+    print(f"Checkpoint: {checkpoint_dir / 'best_model.pt'}")
 
 
 if __name__ == "__main__":

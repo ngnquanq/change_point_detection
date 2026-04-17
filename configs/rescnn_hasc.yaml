@@ -1,13 +1,11 @@
-experiment_name: rescnn_s2
+experiment_name: rescnn_hasc
 
 dataset:
-  source: simulated
-  n: 100
-  N: 10000
-  noise_type: S1_prime
-  rho: 0.5
-  mu_range: [-2.0, 2.0]
-  sigma: 1.0
+  source: hasc
+  hasc_dir: data/hasc
+  channel: magnitude
+  window_size: 100
+  stride: 10
   seed: 42
 
 model:
@@ -16,17 +14,17 @@ model:
   base_channels: 32
   kernel_size: 8
   dropout: 0.3
-  use_squared: true
-  use_cross_product: true
+  use_squared: false
+  use_cross_product: false
 
 training:
   epochs: 200
   batch_size: 32
   lr: 0.001
-  weight_decay: 0.0
+  weight_decay: 0.0001
   patience: 20
   val_fraction: 0.1
-  augment_reversed: true
+  augment_reversed: false
 
 localization:
   window_size: 100

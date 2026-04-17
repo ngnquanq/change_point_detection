@@ -37,6 +37,7 @@ def build_model(cfg: ExperimentConfig) -> torch.nn.Module:
             base_channels=cfg.model.base_channels,
             kernel_size=cfg.model.kernel_size,
             in_channels=1,
+            dropout=cfg.model.dropout,
         )
     else:
         raise ValueError(f"Unknown architecture: {cfg.model.architecture!r}")
@@ -54,7 +55,12 @@ def main() -> None:
     cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
 
     if args.device == "auto":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.backends.mps.is_available():
+            device = torch.device("mps")
+        elif torch.cuda.is_available():
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
     else:
         device = torch.device(args.device)
 
