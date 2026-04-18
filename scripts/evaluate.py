@@ -17,30 +17,26 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import ExperimentConfig, MODELS_DIR
+from src.config import ExperimentConfig, PROJECT_ROOT
+from src.registry import MODEL_REGISTRY
 from src.data.simulator import simulate_dataset
 from src.data.transforms import build_preprocessing_pipeline
-from src.models.mlp import MLPDetector
-from src.models.rescnn import ResidualCNN
 from src.evaluation.metrics import evaluate_detector
 from src.evaluation.baselines import run_cusum_on_dataset
 
+# Import to trigger registration
+import src.models.rescnn  # noqa: F401
+import src.models.mlp     # noqa: F401
 
-def build_model(cfg: ExperimentConfig) -> torch.nn.Module:
-    n_input = cfg.input_length()
-    if cfg.model.architecture == "mlp":
-        return MLPDetector(n=n_input, variant=cfg.model.mlp_variant)
-    elif cfg.model.architecture == "rescnn":
-        return ResidualCNN(
-            n=n_input,
-            n_blocks=cfg.model.n_blocks,
-            base_channels=cfg.model.base_channels,
-            kernel_size=cfg.model.kernel_size,
-            in_channels=1,
-            dropout=cfg.model.dropout,
-        )
-    else:
-        raise ValueError(f"Unknown architecture: {cfg.model.architecture!r}")
+
+def auto_detect_device(requested: str) -> torch.device:
+    if requested != "auto":
+        return torch.device(requested)
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
 
 
 def main() -> None:
@@ -51,40 +47,32 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=123, help="Test data seed (different from train)")
     args = parser.parse_args()
 
-    checkpoint_dir = MODELS_DIR / args.experiment
+    checkpoint_dir = PROJECT_ROOT / "models" / args.experiment
     cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
-
-    if args.device == "auto":
-        if torch.backends.mps.is_available():
-            device = torch.device("mps")
-        elif torch.cuda.is_available():
-            device = torch.device("cuda")
-        else:
-            device = torch.device("cpu")
-    else:
-        device = torch.device(args.device)
+    checkpoint_dir = cfg.models_path / args.experiment  # use cfg value
+    device = auto_detect_device(args.device)
 
     # Generate test set (different seed)
     print(f"Generating {args.n_test} test sequences...")
     X_test, y_test, taus_test = simulate_dataset(
         N=args.n_test,
-        n=cfg.simulation.n,
-        noise_type=cfg.simulation.noise_type,
-        rho=cfg.simulation.rho,
-        mu_range=cfg.simulation.mu_range,
-        sigma=cfg.simulation.sigma,
+        n=cfg.dataset.n,
+        noise_type=cfg.dataset.noise_type,
+        rho=cfg.dataset.rho,
+        mu_range=cfg.dataset.mu_range,
+        sigma=cfg.dataset.sigma,
         seed=args.seed,
     )
 
     preprocess = build_preprocessing_pipeline(
-        noise_type=cfg.simulation.noise_type,
+        noise_type=cfg.dataset.noise_type,
         use_squared=cfg.model.use_squared,
         use_cross_product=cfg.model.use_cross_product,
     )
     X_proc = preprocess(X_test)
 
-    # Load model
-    model = build_model(cfg)
+    # Load model via registry — no if/else
+    model = MODEL_REGISTRY.build(cfg.model.architecture, cfg=cfg)
     ckpt = checkpoint_dir / "best_model.pt"
     model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
     model.to(device)
@@ -112,7 +100,7 @@ def main() -> None:
 
     # For localization, use a simple heuristic: tau_hat = n/2 for predicted positives
     # (proper localization needs the Localizer on a full series)
-    taus_pred = np.where(y_pred == 1, cfg.simulation.n // 2, 0)
+    taus_pred = np.where(y_pred == 1, cfg.dataset.n // 2, 0)
 
     # Neural network evaluation
     nn_result = evaluate_detector(y_test, y_pred, taus_test, taus_pred)

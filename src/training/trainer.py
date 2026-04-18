@@ -10,14 +10,16 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from src.config import TrainingConfig
+from src.config import TrainingConfig, OptimizerConfig, SchedulerConfig
+from src.registry import OPTIMIZER_REGISTRY, SCHEDULER_REGISTRY
 
 
 class Trainer:
     """Generic binary classifier trainer for MLPDetector or ResidualCNN.
 
     Uses BCEWithLogitsLoss (models must output raw logits).
-    Adam optimizer with configurable lr and weight_decay.
+    Optimizer, scheduler, and all hyper-parameters are driven by config
+    and instantiated via registries — zero hardcoded types.
     Early stopping on validation loss; saves best checkpoint.
     TensorBoard logging for loss and metrics.
 
@@ -42,14 +44,49 @@ class Trainer:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         self.criterion = nn.BCEWithLogitsLoss()
-        self.optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=config.lr,
-            weight_decay=config.weight_decay,
-        )
+        self.optimizer = self._build_optimizer(config.optimizer)
+        self.scheduler = self._build_scheduler(config.scheduler)
 
         # TensorBoard writer
         self.writer = SummaryWriter(log_dir=str(self.checkpoint_dir / "runs"))
+
+    def _build_optimizer(self, cfg: OptimizerConfig) -> torch.optim.Optimizer:
+        """Build optimizer from registry — no if/else."""
+        params = self.model.parameters()
+        opt_class = OPTIMIZER_REGISTRY.get(cfg.name)
+
+        # Build kwargs based on what each optimizer accepts
+        kwargs = dict(lr=cfg.lr, weight_decay=cfg.weight_decay)
+        if cfg.name in ("adam", "adamw"):
+            kwargs["betas"] = cfg.betas
+        elif cfg.name == "sgd":
+            kwargs["momentum"] = cfg.momentum
+
+        return opt_class(params, **kwargs)
+
+    def _build_scheduler(self, cfg: SchedulerConfig):
+        """Build LR scheduler from registry. Returns None if 'none'."""
+        if cfg.name == "none":
+            return None
+
+        sched_class = SCHEDULER_REGISTRY.get(cfg.name)
+
+        if cfg.name == "cosine":
+            return sched_class(
+                self.optimizer,
+                T_max=self.config.epochs,
+                eta_min=self.config.optimizer.lr * cfg.lrf,
+            )
+        elif cfg.name == "step":
+            return sched_class(
+                self.optimizer,
+                step_size=cfg.step_size,
+                gamma=cfg.gamma,
+            )
+        elif cfg.name == "onecycle":
+            return None  # built lazily in train() when loader size is known
+
+        return sched_class(self.optimizer)
 
     def train(
         self,
@@ -77,6 +114,16 @@ class Trainer:
         patience_counter = 0
         best_ckpt = self.checkpoint_dir / "best_model.pt"
 
+        # Build OneCycleLR lazily (needs loader size)
+        if self.config.scheduler.name == "onecycle":
+            onecycle_cls = SCHEDULER_REGISTRY.get("onecycle")
+            self.scheduler = onecycle_cls(
+                self.optimizer,
+                max_lr=self.config.optimizer.lr,
+                epochs=self.config.epochs,
+                steps_per_epoch=len(train_loader),
+            )
+
         epoch_pbar = tqdm(
             range(1, self.config.epochs + 1),
             desc="Training",
@@ -86,6 +133,10 @@ class Trainer:
         for epoch in epoch_pbar:
             train_loss, train_acc = self._train_epoch(train_loader, epoch)
             val_loss, val_acc = self._val_epoch(val_loader)
+
+            # Step scheduler (except OneCycleLR which steps per batch)
+            if self.scheduler is not None and self.config.scheduler.name != "onecycle":
+                self.scheduler.step()
 
             history["train_loss"].append(train_loss)
             history["val_loss"].append(val_loss)

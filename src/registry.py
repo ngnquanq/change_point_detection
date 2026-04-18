@@ -70,3 +70,24 @@ class Registry:
 
 DATASET_REGISTRY = Registry("dataset")
 MODEL_REGISTRY = Registry("model")
+OPTIMIZER_REGISTRY = Registry("optimizer")
+SCHEDULER_REGISTRY = Registry("scheduler")
+
+
+def _register_builtins():
+    """Pre-register PyTorch optimizers and schedulers."""
+    import torch.optim as optim
+    import torch.optim.lr_scheduler as sched
+
+    # Optimizers
+    OPTIMIZER_REGISTRY.register("adam")(optim.Adam)
+    OPTIMIZER_REGISTRY.register("adamw")(optim.AdamW)
+    OPTIMIZER_REGISTRY.register("sgd")(optim.SGD)
+
+    # Schedulers
+    SCHEDULER_REGISTRY.register("cosine")(sched.CosineAnnealingLR)
+    SCHEDULER_REGISTRY.register("step")(sched.StepLR)
+    SCHEDULER_REGISTRY.register("onecycle")(sched.OneCycleLR)
+
+
+_register_builtins()

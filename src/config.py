@@ -8,14 +8,13 @@ from typing import Literal, Tuple
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MODELS_DIR = PROJECT_ROOT / "models"
-DATA_DIR = PROJECT_ROOT / "data"
 
 
 @dataclass
 class DatasetConfig:
     """Unified dataset configuration for both simulated and HASC data."""
     source: Literal["simulated", "hasc"] = "simulated"
+    data_dir: str = "data"
 
     # --- Simulated data params ---
     n: int = 100
@@ -36,6 +35,12 @@ class DatasetConfig:
     # --- Common ---
     seed: int = 42
 
+    @property
+    def data_path(self) -> Path:
+        """Resolved absolute path to data directory."""
+        p = Path(self.data_dir)
+        return p if p.is_absolute() else PROJECT_ROOT / p
+
 
 # Backward compatibility alias
 SimulationConfig = DatasetConfig
@@ -54,14 +59,33 @@ class ModelConfig:
 
 
 @dataclass
+class OptimizerConfig:
+    """Optimizer parameters."""
+    name: Literal["adam", "adamw", "sgd"] = "adam"
+    lr: float = 1e-3
+    weight_decay: float = 0.0
+    momentum: float = 0.9          # SGD only
+    betas: Tuple[float, float] = (0.9, 0.999)  # Adam/AdamW
+
+
+@dataclass
+class SchedulerConfig:
+    """Learning rate scheduler parameters."""
+    name: Literal["none", "cosine", "step", "onecycle"] = "none"
+    lrf: float = 0.01              # Final LR factor (lr * lrf = final lr)
+    step_size: int = 50            # StepLR: decay every N epochs
+    gamma: float = 0.1             # StepLR: multiply lr by gamma
+
+
+@dataclass
 class TrainingConfig:
     epochs: int = 200
     batch_size: int = 32
-    lr: float = 1e-3
-    weight_decay: float = 0.0
     patience: int = 20
     val_fraction: float = 0.1
     augment_reversed: bool = True
+    optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
+    scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
 
 
 @dataclass
@@ -75,6 +99,7 @@ class LocalizationConfig:
 @dataclass
 class ExperimentConfig:
     experiment_name: str = "default"
+    models_dir: str = "models"
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
@@ -98,10 +123,21 @@ class ExperimentConfig:
             ds.mu_range = tuple(ds.mu_range)
 
         mdl = ModelConfig(**raw.get("model", {}))
-        trn = TrainingConfig(**raw.get("training", {}))
+
+        # Parse training with nested optimizer/scheduler
+        training_raw = dict(raw.get("training", {}))
+        opt_raw = training_raw.pop("optimizer", {})
+        sched_raw = training_raw.pop("scheduler", {})
+        opt = OptimizerConfig(**opt_raw)
+        if isinstance(opt.betas, list):
+            opt.betas = tuple(opt.betas)
+        sched = SchedulerConfig(**sched_raw)
+        trn = TrainingConfig(**training_raw, optimizer=opt, scheduler=sched)
+
         loc = LocalizationConfig(**raw.get("localization", {}))
         return cls(
             experiment_name=raw.get("experiment_name", "default"),
+            models_dir=raw.get("models_dir", "models"),
             dataset=ds,
             model=mdl,
             training=trn,

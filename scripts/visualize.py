@@ -23,7 +23,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import ExperimentConfig, MODELS_DIR
+from src.config import ExperimentConfig, PROJECT_ROOT
 from src.data.simulator import simulate_dataset, simulate_sequence
 from src.data.transforms import build_preprocessing_pipeline, minmax_scale
 from src.evaluation.baselines import run_cusum_on_dataset
@@ -232,7 +232,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=123)
     args = parser.parse_args()
 
-    checkpoint_dir = MODELS_DIR / args.experiment
+    checkpoint_dir = PROJECT_ROOT / "models" / args.experiment
     cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
     device = torch.device(args.device)
 

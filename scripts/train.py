@@ -13,13 +13,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
-
+import os
 import torch
 
 # Allow running from project root without installing the package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import ExperimentConfig, MODELS_DIR
+from src.config import ExperimentConfig
 from src.registry import DATASET_REGISTRY, MODEL_REGISTRY
 from src.data.dataset import make_dataloaders
 from src.training.trainer import Trainer
@@ -78,13 +78,13 @@ def main() -> None:
     print(f"Parameters : {n_params:,}")
 
     # 4. Train
-    checkpoint_dir = MODELS_DIR / cfg.experiment_name
+    checkpoint_dir = os.path.join(cfg.models_dir, cfg.experiment_name)
     trainer = Trainer(model, cfg.training, device, checkpoint_dir)
     history = trainer.train(train_loader, val_loader)
 
     # 5. Save config + history
-    cfg.save_yaml(checkpoint_dir / "config.yaml")
-    with open(checkpoint_dir / "history.json", "w") as f:
+    cfg.save_yaml(os.path.join(checkpoint_dir, "config.yaml"))
+    with open(os.path.join(checkpoint_dir, "history.json"), "w") as f:
         json.dump(history, f, indent=2)
 
     best_val_acc = max(history["val_acc"])

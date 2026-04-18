@@ -1,7 +1,9 @@
 experiment_name: rescnn_s1
+models_dir: output
 
 dataset:
   source: simulated
+  data_dir: data
   n: 100
   N: 10000
   noise_type: S1
@@ -22,11 +24,16 @@ model:
 training:
   epochs: 200
   batch_size: 32
-  lr: 0.001
-  weight_decay: 0.0
   patience: 20
   val_fraction: 0.1
   augment_reversed: true
+  optimizer:
+    name: adam
+    lr: 0.001
+    weight_decay: 0.0
+    betas: [0.9, 0.999]
+  scheduler:
+    name: none
 
 localization:
   window_size: 100
