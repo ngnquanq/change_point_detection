@@ -6,8 +6,8 @@ dataset:
   data_dir: data
   n: 100
   N: 10000
-  noise_type: S1_prime
-  rho: 0.5
+  noise_type: S2
+  rho: 0.0
   mu_range: [-2.0, 2.0]
   sigma: 1.0
   seed: 42

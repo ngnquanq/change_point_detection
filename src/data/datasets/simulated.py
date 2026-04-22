@@ -38,7 +38,6 @@ class SimulatedDataset:
             n=cfg.n,
             noise_type=cfg.noise_type,
             rho=cfg.rho,
-            mu_range=cfg.mu_range,
             sigma=cfg.sigma,
             cauchy_scale=cfg.cauchy_scale,
             snr_based_mu=cfg.snr_based_mu,
