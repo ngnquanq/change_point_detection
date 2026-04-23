@@ -89,7 +89,7 @@ def main() -> None:
 
     best_val_acc = max(history["val_acc"])
     print(f"\nDone. Best val accuracy: {best_val_acc:.4f}")
-    print(f"Checkpoint: {checkpoint_dir / 'best_model.pt'}")
+    print(f"Checkpoint: {os.path.join(checkpoint_dir, 'best_model.pt')}")
 
 
 if __name__ == "__main__":

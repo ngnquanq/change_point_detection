@@ -144,15 +144,12 @@ class Trainer:
             history["val_acc"].append(val_acc)
 
             # --- TensorBoard logging ---
-            self.writer.add_scalars("Loss", {
-                "train": train_loss,
-                "val": val_loss,
-            }, epoch)
-            self.writer.add_scalars("Accuracy", {
-                "train": train_acc,
-                "val": val_acc,
-            }, epoch)
+            self.writer.add_scalar("Loss/train", train_loss, epoch)
+            self.writer.add_scalar("Loss/val", val_loss, epoch)
+            self.writer.add_scalar("Accuracy/train", train_acc, epoch)
+            self.writer.add_scalar("Accuracy/val", val_acc, epoch)
             self.writer.add_scalar("LR", self.optimizer.param_groups[0]["lr"], epoch)
+            self.writer.flush()
 
             # --- tqdm progress bar ---
             is_best = ""
@@ -220,6 +217,10 @@ class Trainer:
             loss = self.criterion(logits, labels)
             loss.backward()
             self.optimizer.step()
+            
+            if self.scheduler is not None and self.config.scheduler.name == "onecycle":
+                self.scheduler.step()
+
 
             batch_loss = loss.item()
             total_loss += batch_loss * len(labels)
