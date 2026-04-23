@@ -1,0 +1,95 @@
+\section{Định nghĩa toán học}
+Với mọi số nguyên dương $n \in \mathbb{Z}^+$, định nghĩa $[n] := \{1, \dots, n\}$.
+Mặc định $\mathbf{1}_n$ là véc tơ có tất cả thành phần là $\mathbf{1}$, và có độ dài là $n$. Gọi $\mathbf{1}\{\cdot\}$ là hàm chỉ thị. $|\cdot|$ biểu diễn độ lớn hoặc giá trị tuyệt đối của $\cdot$.
+Cho $x = (x_1, \ldots, x_n)^\top$, chuẩn $p$ được định nghĩa:
+\[
+\|x\|_p := \left( \sum_{i=1}^n |x_i|^p \right)^{1/p}, \quad p \ge 1;
+\]
+Khi $p = \infty$, thì có chuẩn là:
+\[
+\|x\|_\infty := \max_i |x_i|.
+\]
+\vspace{0.5cm}
+
+\section{Mạng Nơ-ron (Neural Networks)}
+
+\subsection*{1. Xây dựng Mạng Nơ-ron}
+
+Gọi $L \in \mathbb{Z}^+$ là số lượng lớp ẩn và $m = (m_1, \dots, m_L)^\top$ là vector độ rộng các lớp ẩn, tức $m_i$ là số node trong lớp ẩn thứ $i$.
+
+Với một mạng có $L$ lớp ẩn, ta quy ước:
+\begin{itemize}
+    \item $m_0 = n$ (kích thước đầu vào)
+    \item $m_{L+1} = 1$ (đầu ra nhị phân)
+\end{itemize}
+
+Với bất kỳ vector bias $b = (b_1, b_2, \dots, b_r)^\top \in \mathbb{R}^r$, định nghĩa \textbf{hàm kích hoạt có dịch chuyển} (shifted activation function) $\sigma_b : \mathbb{R}^r \rightarrow \mathbb{R}^r$ như sau:
+\begin{equation*}
+    \sigma_b((y_1, \dots, y_r)^\top) = (\sigma(y_1-b_1), \dots, \sigma(y_r-b_r))^\top
+\end{equation*}
+trong đó $\sigma(x) = \max(x, 0)$ là hàm kích hoạt ReLU.
+
+Mạng nơ-ron được biểu diễn toán học bởi một hàm hợp (composite function) $h: \mathbb{R}^n \rightarrow \{0,1\}$ dưới dạng:
+\begin{equation}
+    h(x) := \sigma_\lambda^* \, W_L \sigma_{b_L} W_{L-1}\sigma_{b_{L-1}} \cdots W_1\sigma_{b_1}W_0x
+\end{equation}
+
+Trong đó:
+\begin{itemize}
+    \item $\sigma_\lambda^*(x) = 1\{x > \lambda\}$ với $\lambda > 0$.
+    \item $W_\ell \in \mathbb{R}^{m_{\ell+1} \times m_\ell}$ là ma trận trọng số của lớp $\ell$, với $\ell \in \{0,\dots,L\}$.
+\end{itemize}
+
+Lớp hàm $\mathcal{H}_{L,m}$ được định nghĩa là tập tất cả các hàm $h(x)$ có $L$ lớp ẩn và vector độ rộng lớp ẩn $m$.
+
+\subsection*{2. Giải thích Cấu trúc mạng Nơ-ron được sử dụng}
+
+\begin{itemize}
+    \item Về mặt toán học, mạng nơ-ron này là một hàm hợp thành $h(x)$ ánh xạ từ không gian đầu vào $\mathbb{R}^n$ sang tập kết quả $\{0, 1\}$. Hàm này hoạt động bằng cách áp dụng liên tiếp các ma trận trọng số $W$ và hàm kích hoạt ReLU có tính toán thêm véc-tơ độ lệch (bias) qua từng lớp. Lớp hàm tương ứng với kiến trúc này được ký hiệu là $\mathcal{H}_{L,m}$.
+    \item Tại lớp đầu ra cuối cùng, mạng sử dụng hàm bước Heaviside dịch chuyển ($\sigma_{\lambda}^{*}$) để đưa ra quyết định phân loại nhị phân.
+\end{itemize}
+\textbf{3. Cơ sở lý thuyết và Hàm mất mát (Loss Function)}
+\begin{itemize}
+    \item Thay vì dùng các hàm mất mát phổ biến và dễ tối ưu hóa hơn (như cross-entropy), nhóm tác giả quyết định sử dụng \textbf{hàm mất mát 0-1 (0-1 loss)}. Hàm này đánh giá trực tiếp tỷ lệ phần trăm các mẫu dữ liệu được phân loại đúng.
+    \item \textbf{Lý do chọn hàm mất mát 0-1:} Về mặt lý thuyết thống kê, cấu trúc này cho phép tác giả áp dụng \textbf{lý thuyết chiều VC (Vapnik-Chervonenkis dimension)} để thiết lập các giới hạn chặn trên chặt chẽ cho sai số tổng quát hóa (generalization error) của bộ phân loại.
+    \item Đồng thời, nghiên cứu tập trung vào việc tìm ra bộ phân loại giúp \textbf{tối thiểu hóa rủi ro thực nghiệm (empirical risk)} một cách chính xác nhất trên tập dữ liệu.
+
+
+\section{Sai số tổng quát hóa của bộ phân loại điểm thay đổi bằng mạng nơ-ron}
+Trong phân tích chuỗi thời gian, việc phát hiện điểm thay đổi (change-point detection) theo truyền thống phụ thuộc vào các phép kiểm định thống kê được thiết kế thủ công, điển hình như thống kê CUSUM cho sự thay đổi về trung bình. Tuy nhiên, các phương pháp này thường nhạy cảm với việc tinh chỉnh tham số và giả định phân phối. 
+
+Nghiên cứu này tiếp cận bài toán dưới góc độ của Học có giám sát (Supervised Learning). Xuất phát từ việc chứng minh CUSUM có thể được biểu diễn chính xác bằng một mạng nơ-ron đơn giản, trọng tâm của báo cáo này là định lượng \textbf{sai số tổng quát hóa} (generalization error) của mạng nơ-ron, nhằm khẳng định nền tảng toán học vững chắc của phương pháp này.
+
+\section{Nền tảng: Phân tích Rủi ro của Phép kiểm định CUSUM}
+Trước khi đánh giá mạng nơ-ron, rủi ro phân loại sai của phương pháp CUSUM cần được thiết lập chặt chẽ. Xét chuỗi dữ liệu $X \sim N_n(\mu, I_n)$ độ dài $n$, với $\eta := \tau/n$ là tỷ lệ vị trí điểm thay đổi.
+
+\textbf{Bổ đề 4.1} kiểm soát hai loại sai số cơ bản của CUSUM với mức ý nghĩa $\epsilon$:
+\begin{itemize}
+    \item \textbf{Kiểm soát Báo động giả (Type I Error):} Khi không có sự thay đổi ($\mu_L = \mu_R$), xác suất thống kê CUSUM vượt quá ngưỡng $\sqrt{2 \log(n/\epsilon)}$ được chặn trên bởi $\epsilon$.
+    \item \textbf{Kiểm soát Bỏ lọt (Type II Error):} Khi có sự thay đổi với cường độ tín hiệu đủ mạnh $|\mu_L - \mu_R|\sqrt{\eta(1 - \eta)} > \sqrt{8 \log(n/\epsilon)/n}$, xác suất bỏ lọt cũng được chặn bởi $\epsilon$.
+\end{itemize}
+
+Để đánh giá tổng thể, tác giả định nghĩa không gian tham số $\Theta(B)$ đại diện cho các phân phối hoặc là không có thay đổi, hoặc có điểm thay đổi với Tỷ lệ Tín hiệu trên Nhiễu (SNR) tối thiểu là $B$. Theo \textbf{Hệ quả 4.1}, với ngưỡng $\lambda = B\sqrt{n}/2$, rủi ro của CUSUM giảm theo hàm mũ đối với tín hiệu $B$:
+$$ \mathbb{P}(h_{\hat{\lambda}}^{\text{CUSUM}}(X) \neq Y) \leq ne^{-nB^2/8} $$
+
+\section{Sai số Tổng quát hóa của Mạng Nơ-ron}
+Dựa trên rủi ro của CUSUM, nghiên cứu thiết lập các giới hạn cận trên cho rủi ro thực nghiệm tối thiểu (Empirical Risk Minimizer - ERM) của mạng nơ-ron.
+
+\subsection{Giới hạn đối với Mạng Nơ-ron Một Lớp (Định lý 4.2)}
+Xét mạng nơ-ron có 1 lớp ẩn với $2n-2$ nơ-ron (đủ để bao hàm phép biến đổi CUSUM). Với tập huấn luyện kích thước $N$, sai số tổng quát hóa với xác suất $1 - \delta$ được chặn bởi:
+$$ \mathbb{P}(h_{\text{ERM}}(X) \neq Y | \mathcal{D}) \leq ne^{-nB^2/8} + C\sqrt{\frac{n^2\log(n)\log(N) + \log(1/\delta)}{N}} $$
+
+\textbf{Phân tích:} Giới hạn này tách biệt rõ ràng thành hai thành phần:
+\begin{enumerate}
+    \item Sai số kiểm định gốc của CUSUM ($ne^{-nB^2/8}$).
+    \item Độ phức tạp của mạng nơ-ron (phụ thuộc vào chiều VC dimension).
+\end{enumerate}
+Hạn chế ở đây là mạng nơ-ron cần một tập dữ liệu huấn luyện rất lớn, cụ thể là $N \gg n^2 \log n$, để thành phần sai số thứ hai hội tụ về 0 và tiệm cận hiệu năng của CUSUM.
+
+\subsection{Tối ưu hóa kiến trúc với Mạng Nơ-ron Nhiều Lớp (Định lý 4.3)}
+Trong thực tế, các nơ-ron biểu diễn phép biến đổi CUSUM có độ tương quan rất cao. Bằng cách "tỉa" (pruning) các nơ-ron dư thừa, mạng có thể mô phỏng CUSUM chỉ với $O(\log n)$ nơ-ron. 
+
+Áp dụng cho mạng nhiều lớp ẩn ($L$ lớp), \textbf{Định lý 4.3} nới lỏng đáng kể yêu cầu về dữ liệu huấn luyện:
+$$ \mathbb{P}(h_{\text{ERM}}(X) \neq Y | \mathcal{D}) \leq 2\lfloor \log_2(n) \rfloor e^{-nB^2/24} + C\sqrt{\frac{L^2 n \log^2(Ln)\log(N) + \log(1/\delta)}{N}} $$
+
+\textbf{Phân tích:} Việc giảm số lượng nơ-ron ẩn xuống mức $4\lfloor \log_2(n) \rfloor$ kết hợp với cấu trúc đa lớp giúp giảm thiểu rủi ro quá khớp (overfitting), cho phép thuật toán đạt độ chính xác cao ngay cả khi kích thước mẫu $N$ tương đối nhỏ so với chiều dài chuỗi dữ liệu.

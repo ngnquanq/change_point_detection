@@ -1,0 +1,12 @@
+\section{Giới thiệu}
+\begin{itemize}
+    \item \textbf{Vấn đề nghiên cứu:} Trong bài toán phát hiện điểm thay đổi (change-point detection), việc xây dựng các thống kê kiểm định phù hợp thường gặp khó khăn, đặc biệt khi mô hình dữ liệu không rõ ràng nhưng lại có sẵn nhiều dữ liệu lịch sử. Các phương pháp truyền thống như CUSUM phụ thuộc mạnh vào giả định mô hình nên dễ giảm hiệu quả khi dữ liệu có nhiễu tương quan hoặc phân phối phức tạp. Vì vậy, bài báo đặt ra câu hỏi: liệu có thể xây dựng bộ phát hiện điểm thay đổi chỉ từ dữ liệu đã được gán nhãn hay không.
+
+    \item \textbf{Phương pháp đề xuất:} Bài báo đề xuất sử dụng mạng nơ-ron để phân loại xem một chuỗi dữ liệu có chứa điểm thay đổi hay không. Cách tiếp cận này chuyển trực tiếp bài toán phát hiện điểm thay đổi thành một bài toán học có giám sát (supervised learning), trong đó mô hình tự động học đặc trưng thay đổi từ dữ liệu được huấn luyện.
+
+    \item \textbf{Lý thuyết cốt lõi:} Đóng góp quan trọng của nghiên cứu là chứng minh rằng nhiều thống kê kiểm định cổ điển, đặc biệt là kiểm định CUSUM, có thể được biểu diễn dưới dạng mạng nơ-ron đơn giản. Điều này cho thấy mạng nơ-ron không chỉ là công cụ thực nghiệm mà còn có nền tảng lý thuyết thống kê rõ ràng.
+
+    \item \textbf{Tính vượt trội:} Với đủ dữ liệu huấn luyện, mạng nơ-ron có hiệu năng ít nhất tương đương các phương pháp truyền thống. Ngoài ra, khi dữ liệu không thỏa mãn giả định Gaussian độc lập, chẳng hạn có tự tương quan hoặc nhiễu đuôi nặng, mô hình học sâu có thể hoạt động tốt hơn CUSUM và các kiểm định cổ điển khác.
+
+    \item \textbf{Phạm vi bài toán:} Bài báo tập trung chủ yếu vào bài toán phát hiện ngoại tuyến (offline detection) cho một điểm thay đổi duy nhất. Thay vì tiếp cận theo hướng kiểm định giả thuyết, nghiên cứu xem đây là bài toán phân loại và hướng tới kiểm soát tỷ lệ phân loại sai tổng thể (mis-classification error rate).
+\end{itemize}

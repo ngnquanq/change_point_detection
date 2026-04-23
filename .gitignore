@@ -26,3 +26,12 @@ rwActData
 models
 # data
 output
+
+docs/**.md
+docs/report/**.log
+docs/report/**.toc
+docs/report/**.fdb_latexmk
+docs/report/**.aux
+docs/report/**.gz
+docs/report/**.fls
+comparison/
