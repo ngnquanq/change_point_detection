@@ -1,0 +1,21 @@
+\section{Thực nghiệm}
+
+Nghiên cứu tiến hành hai nhóm thực nghiệm chính nhằm kiểm chứng độ hiệu quả của phương pháp mạng nơ-ron: trên dữ liệu mô phỏng và trên tập dữ liệu thế giới thực.
+
+\subsection{Dữ liệu mô phỏng (Synthetic Data)}
+Để đánh giá khả năng chống chịu nhiễu, thuật toán sinh dữ liệu tạo ra chuỗi độ dài $n=100$ với 4 kịch bản (scenarios) nhiễu khác nhau:
+\begin{itemize}
+    \item \textbf{S1:} Nhiễu Gaussian độc lập $\mathcal{N}(0,1)$, không có tự tương quan ($\rho = 0$).
+    \item \textbf{S1':} Nhiễu AR(1) với hệ số tự tương quan cố định $\rho = 0.7$.
+    \item \textbf{S2:} Nhiễu AR(1) biến đổi theo thời gian, với $\rho_t \sim \text{Unif}[0, 1]$.
+    \item \textbf{S3:} Nhiễu phân phối đuôi nặng Cauchy (Cauchy noise) với tỉ lệ $\text{scale} = 0.3$.
+\end{itemize}
+Kích thước tập huấn luyện $N$ được tăng dần từ 100 đến 1000 mẫu để khảo sát tốc độ hội tụ. Tập kiểm thử (Test Set) được tạo với kích thước lớn $N_{\text{test}} = 30000$. Quá trình huấn luyện sử dụng thuật toán tối ưu Adam, tốc độ học (learning rate) 0.001 với hàm mất mát Binary Cross-Entropy. Kết quả được so sánh trực tiếp với phương pháp CUSUM (với ngưỡng threshold được tinh chỉnh tối ưu bằng cross-validation).
+
+\subsection{Dữ liệu chuyển động thực tế (HASC Dataset)}
+Dữ liệu HASC (Human Activity Sensing Consortium) chứa chuỗi cảm biến gia tốc (3 trục x, y, z) đo lường các hoạt động của con người như: đứng yên (stay), đi bộ (walk), chạy bộ (jog), nhảy (skip), lên cầu thang (stair up) và xuống cầu thang (stair down). Tần số lấy mẫu là 100Hz.
+\begin{itemize}
+    \item \textbf{Cắt dữ liệu (Windowing):} Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
+    \item \textbf{Gán nhãn đa lớp:} Một cửa sổ nếu chỉ chứa duy nhất một hành động sẽ được gán nhãn \textit{Tĩnh} (Pure state). Ngược lại, nếu cửa sổ quét ngang qua lúc con người chuyển từ hành động này sang hành động khác (ví dụ: walk $\rightarrow$ jog), nó sẽ mang nhãn \textit{Chuyển tiếp} (Transition state). Hệ thống đã tự động định nghĩa tổng cộng 30 nhãn (6 nhãn pure và 24 nhãn transition) để bao quát toàn bộ.
+    \item \textbf{Mô hình:} Mạng Deep Residual CNN được sử dụng, cấu hình đầu vào 3 kênh (channels) và đầu ra 30 lớp. Khác với phân loại nhị phân ở dữ liệu mô phỏng, phần đầu ra (head) của mô hình được cắt bớt 2 lớp Dense cuối để phù hợp với bài toán nhiều nhãn.
+\end{itemize}
