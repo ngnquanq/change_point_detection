@@ -1,0 +1,83 @@
+\documentclass[a4paper, 12pt]{article}
+
+% ==========================================
+% PHẦN KHAI BÁO (PREAMBLE) - HỖ TRỢ TIẾNG VIỆT
+% ==========================================
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+
+% Khai báo thêm các gói cơ bản nếu cần
+\usepackage{graphicx} % Hỗ trợ chèn ảnh
+\usepackage{geometry} % Căn lề
+\geometry{a4paper, left=3cm, right=2cm, top=2.5cm, bottom=2.5cm}
+
+\begin{document}
+
+% ==========================================
+% BẮT ĐẦU TRANG BÌA
+% ==========================================
+\begin{titlepage}
+    \begin{center}
+        {\large \textbf{ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH}} \\
+        {\large \textbf{TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}} \\
+        {\large \textbf{KHOA TOÁN - TIN HỌC}} \\
+        
+        \vspace{0.5cm}
+        \hrule
+        \vspace{2.5cm}
+        
+       
+        
+        \vspace{1.5cm}
+        
+        \fbox{
+            \begin{minipage}{0.9\textwidth}
+                \centering
+                \vspace{0.7cm}
+                {\huge \textbf{Automatic Change-Point Detection}} \\
+                \vspace{0.3cm}
+                {\huge \textbf{in Time Series via Deep Learning}} \\
+                \vspace{0.7cm}
+            \end{minipage}
+        }
+        
+        \vspace{3cm}
+        
+        \begin{table}[h]
+            \centering
+            \begin{tabular}{rrl}
+                \textbf{Giảng viên hướng dẫn:} & \multicolumn{2}{l}{\textbf{Tô Đức Khánh}} \\[0.3cm]
+                \textbf{Học viên thực hiện:}  & Phạm Cung Lê Nhân Vũ   & -- 25C01049 \\
+                                              & Nguyễn Thị Thanh Hoài  & -- 25C24003\\
+                                              & Nguyễn Nhật Quang      & -- 25C23002 \\
+            \end{tabular}
+        \end{table}
+        
+        \vfill
+        
+        {\large \textbf{TP. HỒ CHÍ MINH, 04--2026}}
+        
+    \end{center}
+\end{titlepage}
+% ==========================================
+% KẾT THÚC TRANG BÌA
+% ==========================================
+
+% Tạo trang mục lục tự động (nhờ gói babel sẽ hiển thị chữ "Mục lục" thay vì "Contents")
+\tableofcontents
+\newpage
+
+\include{1.introduction}
+\include{2.preliminary}
+\include{3.methodology}
+\include{4.experiment}
+\include{5.results}
+\include{6.conclusion}
+
+
+\section{Kết luận}
+Các định lý toán học trong Mục 4 đã cung cấp bảo chứng lý thuyết vững chắc cho việc sử dụng Deep Learning trong bài toán phát hiện điểm thay đổi. Thông qua việc biểu diễn các Likelihood-ratio test dưới dạng mạng nơ-ron và áp dụng lý thuyết chiều VC, thuật toán giảm thiểu rủi ro thực nghiệm (ERM) không chỉ tiệm cận được hiệu suất của CUSUM mà còn yêu cầu một lượng dữ liệu huấn luyện hoàn toàn khả thi trong thực tiễn.
+
+\end{document}
+\end{document}
