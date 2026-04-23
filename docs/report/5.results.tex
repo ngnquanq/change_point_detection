@@ -1,3 +1,16 @@
+\section{Kết quả}
 
-\section{Kết luận}
-Các định lý toán học trong Mục 4 đã cung cấp bảo chứng lý thuyết vững chắc cho việc sử dụng Deep Learning trong bài toán phát hiện điểm thay đổi. Thông qua việc biểu diễn các Likelihood-ratio test dưới dạng mạng nơ-ron và áp dụng lý thuyết chiều VC, thuật toán giảm thiểu rủi ro thực nghiệm (ERM) không chỉ tiệm cận được hiệu suất của CUSUM mà còn yêu cầu một lượng dữ liệu huấn luyện hoàn toàn khả thi trong thực tiễn.
+\subsection{Kết quả phân loại trên dữ liệu mô phỏng}
+Tỷ lệ phân loại sai (Mis-classification Error Rate - MER) được theo dõi qua từng kịch bản khi kích thước tập huấn luyện $N$ tăng lên:
+\begin{itemize}
+    \item \textbf{Kịch bản S1 (Nhiễu chuẩn, không tương quan):} CUSUM hoạt động gần như hoàn hảo vì các giả định toán học của nó khớp hoàn toàn với bản chất dữ liệu. Các mô hình mạng nơ-ron ($H_{1,m}, H_{5,m}, H_{10,m}$) cho thấy MER tiệm cận được CUSUM khi $N$ đủ lớn, đúng như các phân tích lý thuyết (Định lý 4.3). Ở kích thước mẫu cực nhỏ ($N=100$), mạng nơ-ron gặp hiện tượng thiếu dữ liệu để mô hình hóa và bị CUSUM bỏ xa.
+    \item \textbf{Kịch bản S1', S2 và S3 (Nhiễu tương quan và đuôi nặng):} Đây là lúc mạng nơ-ron chứng minh sức mạnh. Việc giả định phân phối độc lập của CUSUM bị phá vỡ, dẫn tới tỷ lệ lỗi tăng cao đáng kể, ngay cả khi ngưỡng (threshold) đã được hiệu chỉnh tốt nhất. Ngược lại, các mạng nơ-ron, đặc biệt là các kiến trúc mạng sâu ($H_{5,m}$, $H_{10,m}$), tự động trích xuất được đặc trưng của nhiễu. Ở kịch bản Cauchy đuôi nặng, các mạng nơ-ron đánh bại hoàn toàn CUSUM về độ chính xác.
+\end{itemize}
+
+\subsection{Kết quả định vị điểm thay đổi với dữ liệu HASC}
+Trên bộ dữ liệu cảm biến đa chiều HASC, mạng \textbf{Deep Residual CNN} biểu diễn khả năng học xuất sắc đối với các chuỗi tín hiệu thô.
+\begin{itemize}
+    \item Mô hình đã phân biệt thành công các hành động độc lập (pure) và các phân đoạn có sự chuyển giao trạng thái (transition). Mặc dù cấu trúc tín hiệu chuyển giao là cực kỳ phức tạp và không có hình mẫu phân phối toán học rõ ràng.
+    \item Khi chạy \textbf{Thuật toán 1} trên một chuỗi tín hiệu kéo dài liên tục, biểu đồ tín hiệu trung bình trượt $\bar{L}_i$ nhô lên thành các đỉnh (peaks) rất sắc nét tại đúng các thời khắc thay đổi hành động (vượt qua ngưỡng $\gamma=0.5$). 
+    \item Các điểm thay đổi ước lượng $\hat{\tau}$ (đánh dấu bằng các đường kẻ màu xanh trên đồ thị) bám sát gần như hoàn hảo với các vị trí Ground Truth (được đánh dấu màu đỏ) do con người gán nhãn thủ công. Điều này chứng tỏ tiềm năng khổng lồ của Deep Learning để trở thành một "Statistician tự động" (Automatic Statistician) cho bài toán tìm kiếm điểm biến đổi trong thế giới thực.
+\end{itemize}

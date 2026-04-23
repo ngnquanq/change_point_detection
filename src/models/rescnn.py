@@ -99,7 +99,9 @@ class ResidualCNN(nn.Module):
             kernel_size = kwargs.get("kernel_size", 8)
             in_channels = kwargs.get("in_channels", 1)
             dropout = kwargs.get("dropout", 0.3)
+            num_classes = kwargs.get("num_classes", 1)
         self.n = n
+        self.num_classes = num_classes
         ch = base_channels
         transition_block = n_blocks // 3  # block index where channels expand
 
@@ -120,25 +122,41 @@ class ResidualCNN(nn.Module):
         self.blocks = nn.Sequential(*blocks)
         self.pool = nn.AdaptiveAvgPool1d(1)
 
-        # Classifier head — 5 dense layers with Dropout (paper Supp. C.3, Figure S5)
-        self.head = nn.Sequential(
-            nn.Linear(current_ch, 50),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(50, 40),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(40, 30),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(30, 20),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(20, 10),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout),
-            nn.Linear(10, 1),
-        )
+        # Classifier head
+        if num_classes == 1:
+            # Original binary head
+            self.head = nn.Sequential(
+                nn.Linear(current_ch, 50),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(50, 40),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(40, 30),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(30, 20),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(20, 10),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(10, 1),
+            )
+        else:
+            # Multi-class head (drop last two layers to agree with output dim, as in Section 6)
+            self.head = nn.Sequential(
+                nn.Linear(current_ch, 50),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(50, 40),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(40, 30),
+                nn.ReLU(inplace=True),
+                nn.Dropout(dropout),
+                nn.Linear(30, num_classes),
+            )
 
     def forward(self, x: Tensor) -> Tensor:
         """x: (B, in_channels, n) -> logits (B, 1)"""

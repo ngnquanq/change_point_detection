@@ -1,0 +1,72 @@
+import argparse
+import os
+import sys
+import numpy as np
+
+# Add the project root to the python path so that we can import from src
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.data.simulator import simulate_dataset
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate simulated data for change-point detection based on Section 5 of the paper.")
+    
+    # Dataset size and sequence length
+    parser.add_argument("--N", type=int, default=10000, help="Total number of sequences to generate (half with change, half without)")
+    parser.add_argument("--n", type=int, default=100, help="Length of each sequence")
+    
+    # Noise scenario parameters
+    parser.add_argument("--noise_type", type=str, default="S1", choices=["S1", "S1_prime", "S2", "S3"], 
+                        help="Noise scenario. S1: independent Gaussian, S1_prime: AR(1) with fixed rho, S2: AR(1) with varying rho, S3: Cauchy")
+    parser.add_argument("--rho", type=float, default=0.7, help="AR(1) coefficient for S1_prime scenario")
+    parser.add_argument("--sigma", type=float, default=1.0, help="Standard deviation for Gaussian noise (S1)")
+    parser.add_argument("--cauchy_scale", type=float, default=0.3, help="Scale parameter for Cauchy noise (S3)")
+    
+    # Other parameters
+    parser.add_argument("--snr_based_mu", action="store_true", help="Use paper's SNR-based formula to generate the change magnitude mu_R")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--output", type=str, default="data/simulated_dataset.npz", help="Output path for the generated dataset (.npz format)")
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    
+    print(f"Generating simulated dataset with following parameters:")
+    print(f"  Total sequences (N): {args.N}")
+    print(f"  Sequence length (n): {args.n}")
+    print(f"  Noise scenario:      {args.noise_type}")
+    print(f"  SNR-based mu_R:      {args.snr_based_mu}")
+    print(f"  Random seed:         {args.seed}")
+    
+    # Generate the dataset using the existing simulator logic
+    X, y, taus = simulate_dataset(
+        N=args.N,
+        n=args.n,
+        noise_type=args.noise_type,
+        rho=args.rho,
+        sigma=args.sigma,
+        cauchy_scale=args.cauchy_scale,
+        snr_based_mu=args.snr_based_mu,
+        seed=args.seed
+    )
+    
+    print(f"\nGeneration complete!")
+    print(f"  X shape:    {X.shape} (dtype: {X.dtype})")
+    print(f"  y shape:    {y.shape} (dtype: {y.dtype})")
+    print(f"  taus shape: {taus.shape} (dtype: {taus.dtype})")
+    
+    # Ensure output directory exists
+    out_dir = os.path.dirname(args.output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        
+    # Save to disk
+    np.savez_compressed(args.output, X=X, y=y, taus=taus)
+    print(f"\nDataset successfully saved to: {args.output}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,23 @@
+\section{Phương pháp luận}
+
+Bài báo tiếp cận bài toán phát hiện điểm thay đổi bằng cách chuyển đổi nó thành một bài toán phân loại (classification) sử dụng mạng nơ-ron sâu (Deep Learning). Thay vì thiết kế một thống kê kiểm định thủ công dựa trên mô hình dữ liệu (như phương pháp CUSUM truyền thống), phương pháp này học trực tiếp một hàm ánh xạ $\psi(X)$ từ tập dữ liệu huấn luyện để quyết định xem một chuỗi thời gian $X$ có chứa điểm thay đổi hay không.
+
+\subsection{Mạng truyền thẳng nhiều lớp (MLP) cho chuỗi đơn giản}
+Đối với chuỗi thời gian một chiều cơ bản (1D), phương pháp sử dụng kiến trúc mạng truyền thẳng nhiều lớp (Multi-layer Perceptron - MLP) với hàm kích hoạt ReLU. 
+Dựa vào lý thuyết biểu diễn, các tác giả đề xuất sử dụng độ rộng lớp ẩn dựa trên logarit của chiều dài chuỗi $n$: $m_1 = 4\lfloor\log_2(n)\rfloor$ (mạng đã được tỉa - pruned) hoặc $m_2 = 2n-2$ (mạng kích thước đầy đủ tương đương biến đổi CUSUM). Số lượng lớp ẩn $L$ được thử nghiệm với các cấu hình $L \in \{1, 5, 10\}$.
+
+\subsection{Mạng tích chập thặng dư sâu (Deep Residual CNN) cho chuỗi phức tạp}
+Đối với dữ liệu đa chiều, có độ phức tạp cao như tín hiệu cảm biến (VD: dữ liệu chuyển động HASC), một kiến trúc mạng nơ-ron truyền thẳng cơ bản là không đủ để trích xuất đặc trưng. Nghiên cứu đề xuất sử dụng \textbf{Mạng Tích Chập Thặng Dư Sâu (Residual CNN)}.
+\begin{itemize}
+    \item \textbf{Đặc điểm cấu trúc:} Mạng bao gồm 21 khối thặng dư (residual blocks) kết hợp với các kết nối tắt (skip connections) nhằm giải quyết hiện tượng suy biến đạo hàm (vanishing gradient).
+    \item \textbf{Phân loại đa lớp:} Phần đầu ra (Classification head) sử dụng chuỗi các lớp kết nối đầy đủ (Dense layers). Tùy thuộc vào yêu cầu của tập dữ liệu (phân loại nhị phân hay phân loại nhiều nhãn chuyển tiếp), các lớp Dense cuối cùng có thể được loại bỏ hoặc tinh chỉnh số lượng nơ-ron để phù hợp với không gian nhãn.
+\end{itemize}
+
+\subsection{Thuật toán định vị đa điểm thay đổi (Algorithm 1)}
+Mạng nơ-ron được huấn luyện để phân loại một đoạn dữ liệu kích thước cố định. Để phát hiện \textit{nhiều điểm thay đổi} liên tiếp trong một chuỗi thời gian dài vô hạn, nghiên cứu đề xuất \textbf{Thuật toán 1} hoạt động trên cơ chế cửa sổ trượt (sliding window):
+\begin{enumerate}
+    \item \textbf{Quét cửa sổ trượt:} Cho một cửa sổ kích thước $n$ trượt dọc theo toàn bộ chuỗi $X^*$. Tại mỗi vị trí $i$, trích xuất phân đoạn $X^*_{[i, i+n)}$.
+    \item \textbf{Chấm điểm (Scoring):} Áp dụng mô hình dự đoán $\psi(X^*_{[i, i+n)})$. Nếu mô hình dự đoán phân đoạn này chứa nhãn "chuyển tiếp" (điểm thay đổi), trả về $L_i = 1$; ngược lại nếu là nhãn "tĩnh" (pure state), trả về $L_i = 0$.
+    \item \textbf{Tính trung bình trượt:} Để làm mịn tín hiệu và chống nhiễu, tính trung bình $\bar{L}_i = \frac{1}{n} \sum_{j=i-n+1}^i L_j$.
+    \item \textbf{Định vị:} Tìm các phân đoạn cực đại mà $\bar{L}_i \ge \gamma$ (với ngưỡng $\gamma$ thường chọn là 0.5). Vị trí ước lượng của điểm thay đổi $\hat{\tau}$ chính là điểm đạt giá trị $\bar{L}_i$ cao nhất trong phân đoạn đó.
+\end{enumerate}
