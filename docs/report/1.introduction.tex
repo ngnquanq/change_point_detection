@@ -1,12 +1,56 @@
-\section{Giới thiệu}
-\begin{itemize}
-    \item \textbf{Vấn đề nghiên cứu:} Trong bài toán phát hiện điểm thay đổi (change-point detection), việc xây dựng các thống kê kiểm định phù hợp thường gặp khó khăn, đặc biệt khi mô hình dữ liệu không rõ ràng nhưng lại có sẵn nhiều dữ liệu lịch sử. Các phương pháp truyền thống như CUSUM phụ thuộc mạnh vào giả định mô hình nên dễ giảm hiệu quả khi dữ liệu có nhiễu tương quan hoặc phân phối phức tạp. Vì vậy, bài báo đặt ra câu hỏi: liệu có thể xây dựng bộ phát hiện điểm thay đổi chỉ từ dữ liệu đã được gán nhãn hay không.
+% \section{Giới thiệu}
+% \begin{itemize}
+%     \item \textbf{Vấn đề nghiên cứu:} Trong bài toán phát hiện điểm thay đổi (change-point detection), việc xây dựng các thống kê kiểm định phù hợp thường gặp khó khăn, đặc biệt khi mô hình dữ liệu không rõ ràng nhưng lại có sẵn nhiều dữ liệu lịch sử. Các phương pháp truyền thống như CUSUM phụ thuộc mạnh vào giả định mô hình nên dễ giảm hiệu quả khi dữ liệu có nhiễu tương quan hoặc phân phối phức tạp. Vì vậy, bài báo đặt ra câu hỏi: liệu có thể xây dựng bộ phát hiện điểm thay đổi chỉ từ dữ liệu đã được gán nhãn hay không.
 
-    \item \textbf{Phương pháp đề xuất:} Bài báo đề xuất sử dụng mạng nơ-ron để phân loại xem một chuỗi dữ liệu có chứa điểm thay đổi hay không. Cách tiếp cận này chuyển trực tiếp bài toán phát hiện điểm thay đổi thành một bài toán học có giám sát (supervised learning), trong đó mô hình tự động học đặc trưng thay đổi từ dữ liệu được huấn luyện.
+%     \item \textbf{Phương pháp đề xuất:} Bài báo đề xuất sử dụng mạng nơ-ron để phân loại xem một chuỗi dữ liệu có chứa điểm thay đổi hay không. Cách tiếp cận này chuyển trực tiếp bài toán phát hiện điểm thay đổi thành một bài toán học có giám sát (supervised learning), trong đó mô hình tự động học đặc trưng thay đổi từ dữ liệu được huấn luyện.
 
-    \item \textbf{Lý thuyết cốt lõi:} Đóng góp quan trọng của nghiên cứu là chứng minh rằng nhiều thống kê kiểm định cổ điển, đặc biệt là kiểm định CUSUM, có thể được biểu diễn dưới dạng mạng nơ-ron đơn giản. Điều này cho thấy mạng nơ-ron không chỉ là công cụ thực nghiệm mà còn có nền tảng lý thuyết thống kê rõ ràng.
+%     \item \textbf{Lý thuyết cốt lõi:} Đóng góp quan trọng của nghiên cứu là chứng minh rằng nhiều thống kê kiểm định cổ điển, đặc biệt là kiểm định CUSUM, có thể được biểu diễn dưới dạng mạng nơ-ron đơn giản. Điều này cho thấy mạng nơ-ron không chỉ là công cụ thực nghiệm mà còn có nền tảng lý thuyết thống kê rõ ràng.
 
-    \item \textbf{Tính vượt trội:} Với đủ dữ liệu huấn luyện, mạng nơ-ron có hiệu năng ít nhất tương đương các phương pháp truyền thống. Ngoài ra, khi dữ liệu không thỏa mãn giả định Gaussian độc lập, chẳng hạn có tự tương quan hoặc nhiễu đuôi nặng, mô hình học sâu có thể hoạt động tốt hơn CUSUM và các kiểm định cổ điển khác.
+%     \item \textbf{Tính vượt trội:} Với đủ dữ liệu huấn luyện, mạng nơ-ron có hiệu năng ít nhất tương đương các phương pháp truyền thống. Ngoài ra, khi dữ liệu không thỏa mãn giả định Gaussian độc lập, chẳng hạn có tự tương quan hoặc nhiễu đuôi nặng, mô hình học sâu có thể hoạt động tốt hơn CUSUM và các kiểm định cổ điển khác.
 
-    \item \textbf{Phạm vi bài toán:} Bài báo tập trung chủ yếu vào bài toán phát hiện ngoại tuyến (offline detection) cho một điểm thay đổi duy nhất. Thay vì tiếp cận theo hướng kiểm định giả thuyết, nghiên cứu xem đây là bài toán phân loại và hướng tới kiểm soát tỷ lệ phân loại sai tổng thể (mis-classification error rate).
+%     \item \textbf{Phạm vi bài toán:} Bài báo tập trung chủ yếu vào bài toán phát hiện ngoại tuyến (offline detection) cho một điểm thay đổi duy nhất. Thay vì tiếp cận theo hướng kiểm định giả thuyết, nghiên cứu xem đây là bài toán phân loại và hướng tới kiểm soát tỷ lệ phân loại sai tổng thể (mis-classification error rate).
+% \end{itemize}
+
+\section{Giới Thiệu}
+Trong kỷ nguyên dữ liệu lớn, việc theo dõi và phân tích các chuỗi dữ liệu thời gian (time series) là
+yêu cầu cốt lõi trong nhiều lĩnh vực khoa học và công nghiệp. 
+Một trong những bài toán quan trọng nhất là Phát hiện Điểm thay đổi (Change-Point Detection).
+Điểm thay đổi là vị trí hoặc thời điểm mà tại đó, các thuộc tính thống kê cơ bản của dữ liệu 
+(chẳng hạn như giá trị trung bình, phương sai, hoặc độ dốc) đột ngột thay đổi.
+
+\vspace{0.5cm}
+Bài toán này giúp trả lời 2 câu hỏi chính: \textit{Có sự thay đổi có cấu trúc nào xảy ra trong data hay không?}
+\textit{Và nếu có thì sự thay đổi đó xảy ra ở đâu, vào lúc nào?}. Việc tự động hóa việc nhận diện các thay đổi này 
+giúp tạo ra các ứng dụng thực tiễn trong cuộc sống, ví dụ như trong xử lí tín hiệu, phát hiện sự biến đổi trong tế bào, dự biến khí hậu, 
+theo dõi các hành vi chuyển động của con người, v.v\dots
+
+\vspace{0.5cm}
+Mặc dù có nhiều vai trò quan trọng, song các phương pháp truyền thống vẫn còn nhiều hạn chế, hầu hết nằm ở việc chúng 
+không đủ tốt để xử lí các dữ liệu phức tạp hoặc không tuân theo các phân phối như Gaussian hoặc quá phức tạp để một người 
+làm thống kê toán học có thể tinh chỉnh các tham số của bài toán thống kê trên. 
+Đây là một quy trình dài dòng, dễ xảy ra sai sót và phụ thuộc quá nhiều vào các giả định toán học cứng nhắc. 
+Ví dụ, kiểm định CUSUM chỉ hoạt động tốt khi dữ liệu có nhiễu Gaussian độc lập. 
+Khi áp dụng vào dữ liệu thực tế phức tạp chứa nhiễu tự tương quan (auto-correlated noise) hoặc nhiễu có phân phối đuôi dài
+(heavy-tailed Cauchy noise), các kiểm định tiêu chuẩn này thường xuyên thất bại hoặc hoạt động rất kém. 
+Thậm chí, với các dạng dữ liệu quá phức tạp, có thể còn chưa tồn tại một thống kê kiểm định chuẩn mực nào
+
+\vspace{0.5cm}
+Điều này tạo động lực để chúng ta tìm ra một phương pháp khác phù hợp hơn về mặt lý thuyết và thực tiễn.
+Thông qua các công thức toán học, nhóm nghiên cứu đã chứng minh được ta hoàn toàn có thể sử dụng mạng DNN (Deep Neural Network)
+như một nhà thống kê giúp tự động hóa bài toán kiểm định thống kê phức tạp như CUSUM thành một bài toán phân loại nhị phân thông
+qua việc train mô hình bằng dữ liệu quá khứ hoặc dữ liệu mô phỏng. Việc sử dụng DNN mang lại một baseline vững chắc rằng khi
+data của chúng ta có đầy đủ thì việc train 1 mạng DNN sẽ cho ra kết quả ít nhất là tốt bằng phương pháp CUSUM. Nhưng quan trọng
+hơn là việc nhờ vào khả năng tối ưu hóa thì các DNN này hoàn toàn có thể vượt qua các công thức như CUSUM để học ra một cơ chế
+phát hiện mới, tốt hơn các phương pháp cũ khi dữ liệu của chúng ta có nhiễu và phức tạp.
+
+\vspace{0.5cm}
+Mục tiêu chính của đồ án này là hiện thực hóa, đánh giá và mở rộng phương pháp phát hiện điểm thay đổi tự động
+ dựa trên Deep Learning của tác giả, đưa ra nhận xét cá nhân. Đồ án sẽ thực hiện các bước sau:
+\begin{itemize} 
+    \item Xây dựng và triển khai mạng MLP $4\log_2(n)$ node để phát hiện thay đổi điểm đơn (single change-point) và 
+    kiến trúc mạng Residual CNN (ResCNN) để phát hiện đồng thời nhiều loại thay đổi phức tạp. 
+    \item Train và tối ưu mô hình với hàm loss binary cross-entropy cũng như các kỹ thuật tiền xử lí data như min-max normalization 
+    và data augmentation như reverse sequence để tăng tập huấn luyện và giúp tối ưu độ chính xác của mạng. 
 \end{itemize}
+
+

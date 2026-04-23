@@ -1,4 +1,4 @@
-\section{Định nghĩa toán học}
+\section{Cơ Sở Lý Thuyết}
 Với mọi số nguyên dương $n \in \mathbb{Z}^+$, định nghĩa $[n] := \{1, \dots, n\}$.
 Mặc định $\mathbf{1}_n$ là véc tơ có tất cả thành phần là $\mathbf{1}$, và có độ dài là $n$. Gọi $\mathbf{1}\{\cdot\}$ là hàm chỉ thị. $|\cdot|$ biểu diễn độ lớn hoặc giá trị tuyệt đối của $\cdot$.
 Cho $x = (x_1, \ldots, x_n)^\top$, chuẩn $p$ được định nghĩa:
@@ -53,6 +53,7 @@ Lớp hàm $\mathcal{H}_{L,m}$ được định nghĩa là tập tất cả các
     \item Thay vì dùng các hàm mất mát phổ biến và dễ tối ưu hóa hơn (như cross-entropy), nhóm tác giả quyết định sử dụng \textbf{hàm mất mát 0-1 (0-1 loss)}. Hàm này đánh giá trực tiếp tỷ lệ phần trăm các mẫu dữ liệu được phân loại đúng.
     \item \textbf{Lý do chọn hàm mất mát 0-1:} Về mặt lý thuyết thống kê, cấu trúc này cho phép tác giả áp dụng \textbf{lý thuyết chiều VC (Vapnik-Chervonenkis dimension)} để thiết lập các giới hạn chặn trên chặt chẽ cho sai số tổng quát hóa (generalization error) của bộ phân loại.
     \item Đồng thời, nghiên cứu tập trung vào việc tìm ra bộ phân loại giúp \textbf{tối thiểu hóa rủi ro thực nghiệm (empirical risk)} một cách chính xác nhất trên tập dữ liệu.
+\end{itemize}
 
 
 \section{Sai số tổng quát hóa của bộ phân loại điểm thay đổi bằng mạng nơ-ron}

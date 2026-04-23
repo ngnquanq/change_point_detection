@@ -8,7 +8,10 @@
 \usepackage[vietnamese]{babel}
 
 % Khai báo thêm các gói cơ bản nếu cần
-\usepackage{graphicx} % Hỗ trợ chèn ảnh
+\usepackage{amsmath}   % Hỗ trợ môi trường toán học (equation*, align, ...)
+\usepackage{amssymb}   % Hỗ trợ ký hiệu toán (\mathbb, ...)
+\usepackage{amsthm}    % Hỗ trợ định lý, bổ đề
+\usepackage{graphicx}  % Hỗ trợ chèn ảnh
 \usepackage{geometry} % Căn lề
 \geometry{a4paper, left=3cm, right=2cm, top=2.5cm, bottom=2.5cm}
 
@@ -76,8 +79,8 @@
 \include{6.conclusion}
 
 
-\section{Kết luận}
-Các định lý toán học trong Mục 4 đã cung cấp bảo chứng lý thuyết vững chắc cho việc sử dụng Deep Learning trong bài toán phát hiện điểm thay đổi. Thông qua việc biểu diễn các Likelihood-ratio test dưới dạng mạng nơ-ron và áp dụng lý thuyết chiều VC, thuật toán giảm thiểu rủi ro thực nghiệm (ERM) không chỉ tiệm cận được hiệu suất của CUSUM mà còn yêu cầu một lượng dữ liệu huấn luyện hoàn toàn khả thi trong thực tiễn.
+\bibliography{bibliography.bib}
+\bibliographystyle{plain}
 
-\end{document}
+
 \end{document}
