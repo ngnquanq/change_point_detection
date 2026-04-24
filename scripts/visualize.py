@@ -24,6 +24,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import ExperimentConfig, PROJECT_ROOT
+from src.data.paper_faithful import maybe_load_split
 from src.registry import MODEL_REGISTRY
 from src.data.simulator import simulate_dataset, simulate_sequence
 from src.data.transforms import build_preprocessing_pipeline, minmax_scale
@@ -37,6 +38,18 @@ import src.models.mlp     # noqa: F401
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.1)
 COLORS = sns.color_palette("muted")
+
+
+def summarize_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+    return {
+        "detection_accuracy": float((y_true == y_pred).mean()),
+        "power": float(y_pred[pos_mask].mean()) if pos_mask.any() else 0.0,
+        "type1_error": float(y_pred[neg_mask].mean()) if neg_mask.any() else 0.0,
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -124,19 +137,35 @@ def plot_performance_bars(ax, nn_result: dict, cusum_result: dict) -> None:
                     ha="center", va="bottom", fontsize=8)
 
 
-def plot_localization_errors(ax, nn_errors: list, cusum_errors: list) -> None:
-    """Overlapping histograms of localization errors for NN and CUSUM."""
-    bins = np.linspace(0, max(max(nn_errors, default=1), max(cusum_errors, default=1)) + 5, 30)
-    ax.hist(nn_errors, bins=bins, alpha=0.6, color=COLORS[0], label="Neural Network", density=True)
-    ax.hist(cusum_errors, bins=bins, alpha=0.6, color=COLORS[2], label="CUSUM", density=True)
-    nn_med = np.median(nn_errors) if nn_errors else 0
-    cs_med = np.median(cusum_errors) if cusum_errors else 0
-    ax.axvline(nn_med, color=COLORS[0], linestyle="--", linewidth=1.5, label=f"NN median={nn_med:.1f}")
-    ax.axvline(cs_med, color=COLORS[2], linestyle="--", linewidth=1.5, label=f"CUSUM median={cs_med:.1f}")
-    ax.set_xlabel("|τ̂ - τ|  (positions)")
-    ax.set_ylabel("Density")
-    ax.set_title("Localization Error Distribution\n(true-positive sequences)")
-    ax.legend(fontsize=8)
+def plot_prediction_breakdown(ax, y_true: np.ndarray, nn_preds: np.ndarray, cusum_preds: np.ndarray) -> None:
+    """Stacked confusion-breakdown bars for each method."""
+    methods = [
+        ("Neural Network", np.asarray(nn_preds)),
+        ("CUSUM", np.asarray(cusum_preds)),
+    ]
+    categories = [
+        ("TP", lambda yt, yp: ((yt == 1) & (yp == 1)).sum(), COLORS[0]),
+        ("TN", lambda yt, yp: ((yt == 0) & (yp == 0)).sum(), COLORS[1]),
+        ("FP", lambda yt, yp: ((yt == 0) & (yp == 1)).sum(), COLORS[2]),
+        ("FN", lambda yt, yp: ((yt == 1) & (yp == 0)).sum(), COLORS[3]),
+    ]
+
+    y_true = np.asarray(y_true)
+    x = np.arange(len(methods))
+    bottoms = np.zeros(len(methods), dtype=float)
+
+    for label, fn, color in categories:
+        vals = np.array([fn(y_true, preds) for _, preds in methods], dtype=float)
+        vals /= max(len(y_true), 1)
+        ax.bar(x, vals, bottom=bottoms, color=color, label=label, width=0.55)
+        bottoms += vals
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([name for name, _ in methods], fontsize=9)
+    ax.set_ylim(0, 1.0)
+    ax.set_ylabel("Fraction of test set")
+    ax.set_title("Prediction Breakdown")
+    ax.legend(fontsize=8, loc="upper right")
 
 
 def plot_roc(ax, y_true: np.ndarray, nn_probs: np.ndarray, cusum_scores: np.ndarray) -> None:
@@ -171,6 +200,7 @@ def plot_localization_demo(
         noise_type=cfg.dataset.noise_type,
         rho=cfg.dataset.rho,
         sigma=cfg.dataset.sigma,
+        cauchy_scale=cfg.dataset.cauchy_scale,
         seed=seed,
     )
 
@@ -235,8 +265,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=123)
     args = parser.parse_args()
 
-    checkpoint_dir = PROJECT_ROOT / "models" / args.experiment
-    cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
+    config_dir = PROJECT_ROOT / "models" / args.experiment
+    cfg = ExperimentConfig.from_yaml(config_dir / "config.yaml")
+    checkpoint_dir = cfg.models_path / args.experiment
     device = torch.device(args.device)
 
     out_dir = Path(args.out_dir) if args.out_dir else checkpoint_dir / "plots"
@@ -252,14 +283,18 @@ def main() -> None:
                                      map_location=device, weights_only=True))
     model.to(device).eval()
 
-    # Generate test data
-    print("Generating test data...")
-    X_test, y_test, taus_test = simulate_dataset(
-        N=args.n_test, n=cfg.dataset.n, noise_type=cfg.dataset.noise_type,
-        rho=cfg.dataset.rho, sigma=cfg.dataset.sigma,
-        cauchy_scale=cfg.dataset.cauchy_scale,
-        snr_based_mu=cfg.dataset.snr_based_mu, seed=args.seed,
-    )
+    loaded = maybe_load_split(cfg.dataset.data_dir, cfg.dataset.noise_type, split="test")
+    if loaded is not None:
+        X_test, y_test, taus_test, dataset_path = loaded
+        print(f"Loading canonical test split from {dataset_path}...")
+    else:
+        print("Generating test data...")
+        X_test, y_test, taus_test = simulate_dataset(
+            N=args.n_test, n=cfg.dataset.n, noise_type=cfg.dataset.noise_type,
+            rho=cfg.dataset.rho, sigma=cfg.dataset.sigma,
+            cauchy_scale=cfg.dataset.cauchy_scale,
+            snr_based_mu=cfg.dataset.snr_based_mu, seed=args.seed,
+        )
     preprocess = build_preprocessing_pipeline(
         noise_type=cfg.dataset.noise_type,
         use_squared=cfg.model.use_squared,
@@ -282,8 +317,7 @@ def main() -> None:
             all_preds.append((p >= 0.5).astype(int))
     nn_probs = np.concatenate(all_probs)
     nn_preds = np.concatenate(all_preds)
-    taus_pred_nn = np.where(nn_preds == 1, cfg.dataset.n // 2, 0)
-    nn_result = evaluate_detector(y_test, nn_preds, taus_test, taus_pred_nn)
+    nn_result = summarize_predictions(y_test, nn_preds)
 
     # CUSUM inference
     cusum_preds, cusum_taus = run_cusum_on_dataset(X_test)
@@ -296,18 +330,15 @@ def main() -> None:
         cusum_scores_norm = cusum_scores / cs_max
     else:
         cusum_scores_norm = cusum_scores
-    cusum_result = evaluate_detector(y_test, cusum_preds, taus_test, cusum_taus)
+    cusum_eval = evaluate_detector(y_test, cusum_preds, taus_test, cusum_taus)
+    cusum_result = {
+        "detection_accuracy": cusum_eval.detection_accuracy,
+        "power": cusum_eval.power,
+        "type1_error": cusum_eval.type1_error,
+    }
 
-    nn_res_dict = {
-        "detection_accuracy": nn_result.detection_accuracy,
-        "power": nn_result.power,
-        "type1_error": nn_result.type1_error,
-    }
-    cusum_res_dict = {
-        "detection_accuracy": cusum_result.detection_accuracy,
-        "power": cusum_result.power,
-        "type1_error": cusum_result.type1_error,
-    }
+    nn_res_dict = dict(nn_result)
+    cusum_res_dict = dict(cusum_result)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Figure 1: Simulated sequences (3 noise types)
@@ -337,9 +368,7 @@ def main() -> None:
     print("Plotting performance comparison...")
     fig3, axes3 = plt.subplots(1, 3, figsize=(16, 5))
     plot_performance_bars(axes3[0], nn_res_dict, cusum_res_dict)
-    plot_localization_errors(axes3[1],
-                             nn_result.localization_errors.tolist(),
-                             cusum_result.localization_errors.tolist())
+    plot_prediction_breakdown(axes3[1], y_test, nn_preds, cusum_preds)
     plot_roc(axes3[2], y_test, nn_probs, cusum_scores_norm)
     fig3.suptitle(f"Neural Network vs CUSUM — {args.experiment}", fontsize=13, fontweight="bold")
     fig3.tight_layout()

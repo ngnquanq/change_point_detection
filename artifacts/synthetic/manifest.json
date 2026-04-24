@@ -1,0 +1,167 @@
+{
+  "canonical_experiments": [
+    "mlp_s1",
+    "mlp_s1prime",
+    "mlp_s2",
+    "mlp_s3"
+  ],
+  "plot_experiment": "mlp_s1",
+  "datasets": [
+    {
+      "name": "s1_train.npz",
+      "path": "data/paper_faithful/s1_train.npz",
+      "sha256": "328ca7f5d251e2fb8072a31176ceac182df2165dcb8f849c0006202f26308c30",
+      "declared_hash": "fe2ca5c28fccc858"
+    },
+    {
+      "name": "s1_test.npz",
+      "path": "data/paper_faithful/s1_test.npz",
+      "sha256": "0c69a59d696cfa73613804ea29eac8cd46ddc3c996f02aa8412022602aa59dcf",
+      "declared_hash": "16ffcd0f46caf6e4"
+    },
+    {
+      "name": "s1prime_train.npz",
+      "path": "data/paper_faithful/s1prime_train.npz",
+      "sha256": "dd03f94aad61baa2880980c9c2cd61ddcb6cdfe2706b8f8673a3ddd9a7759bd7",
+      "declared_hash": "29ef2edf0bfbef51"
+    },
+    {
+      "name": "s1prime_test.npz",
+      "path": "data/paper_faithful/s1prime_test.npz",
+      "sha256": "1602bd4d57be5f1801fb0d419e4d55ee014bc91eda99ca85e064eead34a22f15",
+      "declared_hash": "1f8ce3d57e83a408"
+    },
+    {
+      "name": "s2_train.npz",
+      "path": "data/paper_faithful/s2_train.npz",
+      "sha256": "292485be988485e9980206649c463881975be53b6e124a0731231fc46f665770",
+      "declared_hash": "263cf2d1bc2d1142"
+    },
+    {
+      "name": "s2_test.npz",
+      "path": "data/paper_faithful/s2_test.npz",
+      "sha256": "621800b8b64defcac1c6e00a3d19dd545a6fbac4be11453ec752e34e8a995a2e",
+      "declared_hash": "f46cea51f97f272d"
+    },
+    {
+      "name": "s3_train.npz",
+      "path": "data/paper_faithful/s3_train.npz",
+      "sha256": "dc46861e74d3e4b26a62231934d48cfeb6041fff4aed857cfba4ecc1e2708489",
+      "declared_hash": "5a749e0fca307d1e"
+    },
+    {
+      "name": "s3_test.npz",
+      "path": "data/paper_faithful/s3_test.npz",
+      "sha256": "c21c96be291e5e65245f0630d9ab4f1c67f9126a4471b93bcc596deaec91c44b",
+      "declared_hash": "5459a180df7e68f3"
+    }
+  ],
+  "experiments": [
+    {
+      "experiment": "mlp_s1",
+      "checkpoint_dir": "models/mlp_s1",
+      "config_sha256": "585f3026dfbc274b6723437a1e617518fabb5005918d10564f6730005cbb56b2",
+      "history_sha256": "5f751b41d28580b8bdcd76191cd23ff37277d17588d06cf39cb1295bd98f31b8",
+      "eval_sha256": "dc7cc89eafdf3531a66651db4c8bb06d7efa7b0ffff5caca6c1e6e4657e9bf6f",
+      "best_val_acc": 0.97,
+      "nn": {
+        "detection_accuracy": 0.919,
+        "power": 0.865,
+        "type1_error": 0.027
+      },
+      "cusum": {
+        "detection_accuracy": 0.8915,
+        "power": 0.975,
+        "type1_error": 0.192
+      }
+    },
+    {
+      "experiment": "mlp_s1prime",
+      "checkpoint_dir": "models/mlp_s1prime",
+      "config_sha256": "f836ce63d299461b30ebb0b4e84ec3a85a51ccd692594e5f8db980eb85fbfaad",
+      "history_sha256": "f1206783f57cb92e2070b709de7845274fcbfecb92493f4304139e4bbc8a492b",
+      "eval_sha256": "3ac66510d6e5e87ef56e7c35575aeae9501d03eed1bcdb4fa6a186c1cd75b11d",
+      "best_val_acc": 0.7595,
+      "nn": {
+        "detection_accuracy": 0.729,
+        "power": 0.694,
+        "type1_error": 0.236
+      },
+      "cusum": {
+        "detection_accuracy": 0.5005,
+        "power": 1.0,
+        "type1_error": 0.999
+      }
+    },
+    {
+      "experiment": "mlp_s2",
+      "checkpoint_dir": "models/mlp_s2",
+      "config_sha256": "40a44af354010346cc70f4c072918a34e1d665ce7d0d1f92031c9f036792bb8f",
+      "history_sha256": "73109c029016bc2a58353d2cfd748f9f898313e057f4f9c21e986730787010e2",
+      "eval_sha256": "9d6b3c84e561d4c94ee3d3f5b568899aeca53c1f1c62175080ed2ce016dc9854",
+      "best_val_acc": 0.7825,
+      "nn": {
+        "detection_accuracy": 0.754,
+        "power": 0.673,
+        "type1_error": 0.165
+      },
+      "cusum": {
+        "detection_accuracy": 0.5,
+        "power": 1.0,
+        "type1_error": 1.0
+      }
+    },
+    {
+      "experiment": "mlp_s3",
+      "checkpoint_dir": "models/mlp_s3",
+      "config_sha256": "062110590dae7df7b14659c35392f9b219a56a5297922264baf2af7e2c07e5f6",
+      "history_sha256": "bfd2c1d0aec1e8307fcaecb9e5121d642c408f840b7f6326fda3766d7ef53a67",
+      "eval_sha256": "b55bfeb1bd00293f2a347b36cabb9f30f8d6f5830219d0f9c460b44fe709c48d",
+      "best_val_acc": 0.616,
+      "nn": {
+        "detection_accuracy": 0.597,
+        "power": 0.773,
+        "type1_error": 0.579
+      },
+      "cusum": {
+        "detection_accuracy": 0.511,
+        "power": 1.0,
+        "type1_error": 0.978
+      }
+    }
+  ],
+  "plots": [
+    {
+      "path": "models/mlp_s1/plots/fig1_simulated_sequences.png",
+      "sha256": "1ba8f44991f2e274c98c9c4cd26a75bfd816953252f5bb904371ac080ffaaf25"
+    },
+    {
+      "path": "models/mlp_s1/plots/fig2_training_curves.png",
+      "sha256": "b649acaf934fa5f4c12ce7b48092eadd1129b8fbbe82c4290f7177b3d39ed58c"
+    },
+    {
+      "path": "models/mlp_s1/plots/fig3_performance_comparison.png",
+      "sha256": "0ba88c79e9afb9e2de280d5e38ec9fbacea6af40c73b75ebe69838e3d20622d5"
+    },
+    {
+      "path": "models/mlp_s1/plots/fig4_localization_demo.png",
+      "sha256": "63978aa1c0db61658008a18b39896636b1888ace3504ae9c5ff424a18a1d1a6a"
+    },
+    {
+      "path": "data/paper_faithful/plots/paper_faithful_train_overview.png",
+      "sha256": "89b70d16a444650d595e5b764780b891b1239154878d6b7bdb105643b935fc35"
+    },
+    {
+      "path": "data/paper_faithful/plots/paper_faithful_test_overview.png",
+      "sha256": "6b49aac15cf600251b476af3c1b634a763d75d6d9e05220a0b917bdac101920a"
+    },
+    {
+      "path": "data/paper_faithful/plots/paper_faithful_summary.csv",
+      "sha256": "2f65d8f395ae408056f3f65c6caf6716934e640a61cc4f3559b9da7c06ab851c"
+    }
+  ],
+  "notes": {
+    "device_default": "cpu",
+    "localization_benchmark": "README-facing synthetic summary reports fixed-window detection metrics; localization remains a deterministic demo plot generated by locate.py logic."
+  }
+}

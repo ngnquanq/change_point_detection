@@ -1,0 +1,16 @@
+{
+  "experiment": "rescnn_s2_paper",
+  "test_source": "canonical_npz",
+  "test_dataset_path": "data/paper_faithful/s2_test.npz",
+  "n_test": 2000,
+  "nn": {
+    "detection_accuracy": 0.7525,
+    "power": 0.675,
+    "type1_error": 0.17
+  },
+  "cusum": {
+    "detection_accuracy": 0.5,
+    "power": 1.0,
+    "type1_error": 1.0
+  }
+}

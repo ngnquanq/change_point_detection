@@ -1,0 +1,16 @@
+{
+  "experiment": "mlp_s3",
+  "test_source": "canonical_npz",
+  "test_dataset_path": "data/paper_faithful/s3_test.npz",
+  "n_test": 2000,
+  "nn": {
+    "detection_accuracy": 0.597,
+    "power": 0.773,
+    "type1_error": 0.579
+  },
+  "cusum": {
+    "detection_accuracy": 0.511,
+    "power": 1.0,
+    "type1_error": 0.978
+  }
+}

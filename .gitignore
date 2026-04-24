@@ -23,7 +23,6 @@ venv/
 .pytest_cache/
 
 rwActData
-models
 # data
 output
 

@@ -1,16 +1,16 @@
 {
+  "experiment": "mlp_s1",
+  "test_source": "canonical_npz",
+  "test_dataset_path": "data/paper_faithful/s1_test.npz",
+  "n_test": 2000,
   "nn": {
-    "detection_accuracy": 0.8055,
-    "power": 0.682,
-    "type1_error": 0.071,
-    "mean_localization_error": 21.643695014662757,
-    "median_localization_error": 21.0
+    "detection_accuracy": 0.919,
+    "power": 0.865,
+    "type1_error": 0.027
   },
   "cusum": {
-    "detection_accuracy": 0.543,
-    "power": 0.944,
-    "type1_error": 0.858,
-    "mean_localization_error": 35.74258474576271,
-    "median_localization_error": 33.0
+    "detection_accuracy": 0.8915,
+    "power": 0.975,
+    "type1_error": 0.192
   }
 }

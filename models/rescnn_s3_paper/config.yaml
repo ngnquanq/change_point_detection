@@ -1,53 +1,53 @@
+experiment_name: rescnn_s3_paper
+models_dir: models
 dataset:
+  source: simulated
+  data_dir: data/paper_faithful
+  n: 100
   N: 10000
-  cauchy_scale: 0.3
-  channel: magnitude
-  data_dir: data
-  hasc_dir: data/hasc
+  noise_type: S3
+  rho: 0.0
   mu_range:
   - -2.0
   - 2.0
-  n: 100
-  noise_type: S3
-  rho: 0.0
-  seed: 42
   sigma: 1.0
+  cauchy_scale: 0.3
   snr_based_mu: true
-  source: simulated
+  hasc_dir: data/hasc
+  channel: magnitude
+  window_size: 100
   stride: 10
-  window_size: 100
-experiment_name: rescnn_s3_paper
-localization:
-  gamma: 0.5
-  rolling_window: 10
-  step_size: 1
-  window_size: 100
+  seed: 42
 model:
   architecture: rescnn
-  base_channels: 32
-  dropout: 0.3
-  kernel_size: 8
   mlp_variant: pruned
   n_blocks: 21
-  use_cross_product: false
+  base_channels: 32
+  kernel_size: 8
+  dropout: 0.3
   use_squared: false
-models_dir: models
+  use_cross_product: false
 training:
-  augment_reversed: true
-  batch_size: 32
   epochs: 200
+  batch_size: 32
+  patience: 20
+  val_fraction: 0.1
+  augment_reversed: true
   optimizer:
-    betas: !!python/tuple
+    name: adam
+    lr: 0.001
+    weight_decay: 0.0
+    momentum: 0.9
+    betas:
     - 0.9
     - 0.999
-    lr: 0.001
-    momentum: 0.9
-    name: adam
-    weight_decay: 0.0
-  patience: 20
   scheduler:
-    gamma: 0.1
-    lrf: 0.01
     name: none
+    lrf: 0.01
     step_size: 50
-  val_fraction: 0.1
+    gamma: 0.1
+localization:
+  window_size: 100
+  step_size: 1
+  rolling_window: 10
+  gamma: 0.5

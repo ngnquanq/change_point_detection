@@ -6,6 +6,7 @@ from typing import Tuple
 import numpy as np
 
 from src.registry import DATASET_REGISTRY
+from src.data.paper_faithful import maybe_load_split
 from src.data.simulator import simulate_dataset
 from src.data.transforms import augment_reversed, build_preprocessing_pipeline
 
@@ -31,18 +32,23 @@ class SimulatedDataset:
         """
         cfg = self.dataset_cfg
 
-        print(f"Simulating {cfg.N} sequences of length {cfg.n} "
-              f"({cfg.noise_type} noise)...")
-        X, y, taus = simulate_dataset(
-            N=cfg.N,
-            n=cfg.n,
-            noise_type=cfg.noise_type,
-            rho=cfg.rho,
-            sigma=cfg.sigma,
-            cauchy_scale=cfg.cauchy_scale,
-            snr_based_mu=cfg.snr_based_mu,
-            seed=cfg.seed,
-        )
+        loaded = maybe_load_split(cfg.data_dir, cfg.noise_type, split="train")
+        if loaded is not None:
+            X, y, taus, path = loaded
+            print(f"Loading canonical train split from {path}...")
+        else:
+            print(f"Simulating {cfg.N} sequences of length {cfg.n} "
+                  f"({cfg.noise_type} noise)...")
+            X, y, taus = simulate_dataset(
+                N=cfg.N,
+                n=cfg.n,
+                noise_type=cfg.noise_type,
+                rho=cfg.rho,
+                sigma=cfg.sigma,
+                cauchy_scale=cfg.cauchy_scale,
+                snr_based_mu=cfg.snr_based_mu,
+                seed=cfg.seed,
+            )
 
         # Augment with reversed sequences
         if self.training_cfg.augment_reversed:

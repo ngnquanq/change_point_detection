@@ -6,8 +6,33 @@ from pathlib import Path
 from typing import Literal, Tuple
 
 import yaml
+from yaml.constructor import ConstructorError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _to_yaml_safe(value):
+    if isinstance(value, dict):
+        return {k: _to_yaml_safe(v) for k, v in value.items()}
+    if isinstance(value, tuple):
+        return [_to_yaml_safe(v) for v in value]
+    if isinstance(value, list):
+        return [_to_yaml_safe(v) for v in value]
+    return value
+
+
+class _TupleSafeLoader(yaml.SafeLoader):
+    pass
+
+
+def _construct_python_tuple(loader, node):
+    return tuple(loader.construct_sequence(node))
+
+
+_TupleSafeLoader.add_constructor(
+    "tag:yaml.org,2002:python/tuple",
+    _construct_python_tuple,
+)
 
 
 @dataclass
@@ -110,10 +135,19 @@ class ExperimentConfig:
     def simulation(self) -> DatasetConfig:
         return self.dataset
 
+    @property
+    def models_path(self) -> Path:
+        p = Path(self.models_dir)
+        return p if p.is_absolute() else PROJECT_ROOT / p
+
     @classmethod
     def from_yaml(cls, path: str | Path) -> ExperimentConfig:
         with open(path) as f:
-            raw = yaml.safe_load(f)
+            try:
+                raw = yaml.safe_load(f)
+            except ConstructorError:
+                f.seek(0)
+                raw = yaml.load(f, Loader=_TupleSafeLoader)
 
         # Backward compat: accept "simulation" key as "dataset"
         dataset_raw = raw.get("dataset", raw.get("simulation", {}))
@@ -145,14 +179,11 @@ class ExperimentConfig:
         )
 
     def save_yaml(self, path: str | Path) -> None:
-        d = asdict(self)
-        # Convert tuples to lists for YAML serialization
-        if "dataset" in d and "mu_range" in d["dataset"]:
-            d["dataset"]["mu_range"] = list(d["dataset"]["mu_range"])
+        d = _to_yaml_safe(asdict(self))
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w") as f:
-            yaml.dump(d, f, default_flow_style=False)
+            yaml.safe_dump(d, f, default_flow_style=False, sort_keys=False)
 
     def input_length(self) -> int:
         """Effective input length after pre-transforms."""

@@ -1,0 +1,16 @@
+{
+  "experiment": "rescnn_s1prime_paper",
+  "test_source": "canonical_npz",
+  "test_dataset_path": "data/paper_faithful/s1prime_test.npz",
+  "n_test": 2000,
+  "nn": {
+    "detection_accuracy": 0.7435,
+    "power": 0.614,
+    "type1_error": 0.127
+  },
+  "cusum": {
+    "detection_accuracy": 0.5005,
+    "power": 1.0,
+    "type1_error": 0.999
+  }
+}

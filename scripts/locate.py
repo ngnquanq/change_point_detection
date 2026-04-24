@@ -42,6 +42,7 @@ def generate_long_series(
     noise_type: str,
     rho: float,
     sigma: float,
+    cauchy_scale: float,
     seed: int,
 ) -> tuple[np.ndarray, list[int]]:
     """Generate a long series with n_changes evenly spaced change points."""
@@ -64,15 +65,21 @@ def generate_long_series(
 
         if noise_type == "S1":
             noise = rng.normal(0, sigma, size=length)
-        elif noise_type in ("S1_prime", "S2"):
+        elif noise_type == "S1_prime":
             noise = np.empty(length)
             sigma_eps = np.sqrt(max(1.0 - rho ** 2, 1e-8))
             noise[0] = rng.normal(0, sigma_eps)
             for t in range(1, length):
                 noise[t] = rho * noise[t - 1] + rng.normal(0, sigma_eps)
+        elif noise_type == "S2":
+            rho_t = rng.uniform(0.0, 1.0, size=length)
+            noise = np.empty(length)
+            noise[0] = rng.normal(0, np.sqrt(2.0))
+            for t in range(1, length):
+                noise[t] = rho_t[t] * noise[t - 1] + rng.normal(0, np.sqrt(2.0))
         elif noise_type == "S3":
             u = rng.uniform(0, 1, size=length)
-            noise = np.tan(np.pi * (u - 0.5))
+            noise = cauchy_scale * np.tan(np.pi * (u - 0.5))
         else:
             noise = rng.normal(0, sigma, size=length)
 
@@ -90,8 +97,8 @@ def main() -> None:
     parser.add_argument("--device", type=str, default="auto")
     args = parser.parse_args()
 
-    checkpoint_dir = PROJECT_ROOT / "models" / args.experiment
-    cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
+    config_dir = PROJECT_ROOT / "models" / args.experiment
+    cfg = ExperimentConfig.from_yaml(config_dir / "config.yaml")
     checkpoint_dir = cfg.models_path / args.experiment
     device = auto_detect_device(args.device)
 
@@ -102,6 +109,7 @@ def main() -> None:
         noise_type=cfg.dataset.noise_type,
         rho=cfg.dataset.rho,
         sigma=cfg.dataset.sigma,
+        cauchy_scale=cfg.dataset.cauchy_scale,
         seed=args.seed,
     )
     print(f"Series length: {args.series_length}, True change points: {true_taus}")

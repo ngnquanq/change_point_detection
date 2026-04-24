@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import ExperimentConfig, PROJECT_ROOT
 from src.registry import MODEL_REGISTRY
+from src.data.paper_faithful import maybe_load_split
 from src.data.simulator import simulate_dataset
 from src.data.transforms import build_preprocessing_pipeline
 from src.evaluation.metrics import evaluate_detector
@@ -39,6 +40,18 @@ def auto_detect_device(requested: str) -> torch.device:
     return torch.device("cpu")
 
 
+def summarize_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+    return {
+        "detection_accuracy": float((y_true == y_pred).mean()),
+        "power": float(y_pred[pos_mask].mean()) if pos_mask.any() else 0.0,
+        "type1_error": float(y_pred[neg_mask].mean()) if neg_mask.any() else 0.0,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate a trained change-point model")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment name")
@@ -47,23 +60,30 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=123, help="Test data seed (different from train)")
     args = parser.parse_args()
 
-    checkpoint_dir = PROJECT_ROOT / "models" / args.experiment
-    cfg = ExperimentConfig.from_yaml(checkpoint_dir / "config.yaml")
-    checkpoint_dir = cfg.models_path / args.experiment  # use cfg value
+    config_dir = PROJECT_ROOT / "models" / args.experiment
+    cfg = ExperimentConfig.from_yaml(config_dir / "config.yaml")
+    checkpoint_dir = cfg.models_path / args.experiment
     device = auto_detect_device(args.device)
 
-    # Generate test set (different seed)
-    print(f"Generating {args.n_test} test sequences...")
-    X_test, y_test, taus_test = simulate_dataset(
-        N=args.n_test,
-        n=cfg.dataset.n,
-        noise_type=cfg.dataset.noise_type,
-        rho=cfg.dataset.rho,
-        sigma=cfg.dataset.sigma,
-        cauchy_scale=cfg.dataset.cauchy_scale,
-        snr_based_mu=cfg.dataset.snr_based_mu,
-        seed=args.seed,
-    )
+    loaded = maybe_load_split(cfg.dataset.data_dir, cfg.dataset.noise_type, split="test")
+    if loaded is not None:
+        X_test, y_test, taus_test, dataset_path = loaded
+        print(f"Loading canonical test split from {dataset_path}...")
+        test_source = "canonical_npz"
+    else:
+        print(f"Generating {args.n_test} test sequences...")
+        X_test, y_test, taus_test = simulate_dataset(
+            N=args.n_test,
+            n=cfg.dataset.n,
+            noise_type=cfg.dataset.noise_type,
+            rho=cfg.dataset.rho,
+            sigma=cfg.dataset.sigma,
+            cauchy_scale=cfg.dataset.cauchy_scale,
+            snr_based_mu=cfg.dataset.snr_based_mu,
+            seed=args.seed,
+        )
+        dataset_path = None
+        test_source = "simulated"
 
     preprocess = build_preprocessing_pipeline(
         noise_type=cfg.dataset.noise_type,
@@ -99,36 +119,33 @@ def main() -> None:
     y_pred = np.concatenate(all_preds)
     probs_all = np.concatenate(all_probs)
 
-    # For localization, use a simple heuristic: tau_hat = n/2 for predicted positives
-    # (proper localization needs the Localizer on a full series)
-    taus_pred = np.where(y_pred == 1, cfg.dataset.n // 2, 0)
-
-    # Neural network evaluation
-    nn_result = evaluate_detector(y_test, y_pred, taus_test, taus_pred)
+    # Neural-network classifier metrics on fixed windows.
+    nn_result = summarize_predictions(y_test, y_pred)
     print("\n=== Neural Network ===")
     print(nn_result)
 
     # CUSUM baseline
     print("\n=== CUSUM Baseline ===")
     cusum_preds, cusum_taus = run_cusum_on_dataset(X_test)
-    cusum_result = evaluate_detector(y_test, cusum_preds, taus_test, cusum_taus)
+    cusum_eval = evaluate_detector(y_test, cusum_preds, taus_test, cusum_taus)
+    cusum_result = {
+        "detection_accuracy": cusum_eval.detection_accuracy,
+        "power": cusum_eval.power,
+        "type1_error": cusum_eval.type1_error,
+    }
     print(cusum_result)
 
     # Save results
     results = {
+        "experiment": args.experiment,
+        "test_source": test_source,
+        "test_dataset_path": str(dataset_path) if dataset_path is not None else None,
+        "n_test": int(len(X_test)),
         "nn": {
-            "detection_accuracy": nn_result.detection_accuracy,
-            "power": nn_result.power,
-            "type1_error": nn_result.type1_error,
-            "mean_localization_error": nn_result.mean_localization_error,
-            "median_localization_error": nn_result.median_localization_error,
+            **nn_result,
         },
         "cusum": {
-            "detection_accuracy": cusum_result.detection_accuracy,
-            "power": cusum_result.power,
-            "type1_error": cusum_result.type1_error,
-            "mean_localization_error": cusum_result.mean_localization_error,
-            "median_localization_error": cusum_result.median_localization_error,
+            **cusum_result,
         },
     }
     out_path = checkpoint_dir / "eval_results.json"

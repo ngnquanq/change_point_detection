@@ -1,4 +1,4 @@
-\documentclass[a4paper, 12pt]{article}
+\documentclass[a4paper, 8pt]{article}
 
 % ==========================================
 % PHẦN KHAI BÁO (PREAMBLE) - HỖ TRỢ TIẾNG VIỆT
@@ -10,6 +10,10 @@
 % Khai báo thêm các gói cơ bản nếu cần
 \usepackage{graphicx} % Hỗ trợ chèn ảnh
 \usepackage{geometry} % Căn lề
+\usepackage{amsmath}  % Công thức toán học
+\usepackage{amssymb}  % Ký hiệu \mathbb, \mathcal, ...
+\usepackage{amsfonts}
+\usepackage{url}      % Hỗ trợ \url{} trong bibliography
 \geometry{a4paper, left=3cm, right=2cm, top=2.5cm, bottom=2.5cm}
 
 \begin{document}
@@ -72,8 +76,9 @@
 \include{2.preliminary}
 \include{3.methodology}
 \include{4.experiment}
-\include{5.results}
 \include{6.conclusion}
 
+\bibliographystyle{plain}
+\bibliography{bibliography}
 
 \end{document}
