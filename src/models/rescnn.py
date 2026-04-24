@@ -92,6 +92,7 @@ class ResidualCNN(nn.Module):
             kernel_size = cfg.model.kernel_size
             in_channels = 1
             dropout = cfg.model.dropout
+            num_classes = getattr(cfg.model, 'num_classes', 1)
         else:
             n = kwargs.get("n", 100)
             n_blocks = kwargs.get("n_blocks", 21)

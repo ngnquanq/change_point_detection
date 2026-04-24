@@ -59,8 +59,9 @@ def main() -> None:
         n=cfg.dataset.n,
         noise_type=cfg.dataset.noise_type,
         rho=cfg.dataset.rho,
-        mu_range=cfg.dataset.mu_range,
         sigma=cfg.dataset.sigma,
+        cauchy_scale=cfg.dataset.cauchy_scale,
+        snr_based_mu=cfg.dataset.snr_based_mu,
         seed=args.seed,
     )
 

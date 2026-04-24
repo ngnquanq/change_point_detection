@@ -8,8 +8,8 @@ dataset:
   N: 10000
   noise_type: S2
   rho: 0.0
-  mu_range: [-2.0, 2.0]
   sigma: 1.0
+  snr_based_mu: true
   seed: 42
 
 model:

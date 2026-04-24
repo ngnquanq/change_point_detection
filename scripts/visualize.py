@@ -24,13 +24,16 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import ExperimentConfig, PROJECT_ROOT
+from src.registry import MODEL_REGISTRY
 from src.data.simulator import simulate_dataset, simulate_sequence
 from src.data.transforms import build_preprocessing_pipeline, minmax_scale
 from src.evaluation.baselines import run_cusum_on_dataset
 from src.evaluation.metrics import evaluate_detector, compute_roc
-from src.models.mlp import MLPDetector
-from src.models.rescnn import ResidualCNN
 from src.inference.localizer import Localizer
+
+# Import to trigger registration
+import src.models.rescnn  # noqa: F401
+import src.models.mlp     # noqa: F401
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.1)
 COLORS = sns.color_palette("muted")
@@ -51,11 +54,11 @@ def plot_simulated_sequences(axes: list, n: int = 100, seed: int = 0) -> None:
     for ax, (title, noise_type, rho) in zip(axes, configs):
         x_change, tau = simulate_sequence(
             n=n, has_change=True, noise_type=noise_type, rho=rho,
-            mu_range=(-2.0, 2.0), sigma=1.0, rng=rng,
+            sigma=1.0, snr_based_mu=True, rng=rng,
         )
         x_flat, _ = simulate_sequence(
             n=n, has_change=False, noise_type=noise_type, rho=rho,
-            mu_range=(-2.0, 2.0), sigma=1.0, rng=rng,
+            sigma=1.0, snr_based_mu=True, rng=rng,
         )
         t = np.arange(n)
         ax.plot(t, x_flat, color=COLORS[0], alpha=0.6, linewidth=1.2, label="No change")
@@ -165,14 +168,14 @@ def plot_localization_demo(
     series, true_taus = generate_long_series(
         total_length=total_length,
         n_changes=n_changes,
-        noise_type=cfg.simulation.noise_type,
-        rho=cfg.simulation.rho,
-        sigma=cfg.simulation.sigma,
+        noise_type=cfg.dataset.noise_type,
+        rho=cfg.dataset.rho,
+        sigma=cfg.dataset.sigma,
         seed=seed,
     )
 
     preprocess = build_preprocessing_pipeline(
-        noise_type=cfg.simulation.noise_type,
+        noise_type=cfg.dataset.noise_type,
         use_squared=cfg.model.use_squared,
         use_cross_product=cfg.model.use_cross_product,
     )
@@ -243,15 +246,8 @@ def main() -> None:
     with open(checkpoint_dir / "history.json") as f:
         history = json.load(f)
 
-    # Load model
-    if cfg.model.architecture == "mlp":
-        model = MLPDetector(n=cfg.input_length(), variant=cfg.model.mlp_variant)
-    else:
-        model = ResidualCNN(
-            n=cfg.input_length(), n_blocks=cfg.model.n_blocks,
-            base_channels=cfg.model.base_channels, kernel_size=cfg.model.kernel_size,
-            dropout=cfg.model.dropout,
-        )
+    # Load model via registry
+    model = MODEL_REGISTRY.build(cfg.model.architecture, cfg=cfg)
     model.load_state_dict(torch.load(checkpoint_dir / "best_model.pt",
                                      map_location=device, weights_only=True))
     model.to(device).eval()
@@ -259,12 +255,13 @@ def main() -> None:
     # Generate test data
     print("Generating test data...")
     X_test, y_test, taus_test = simulate_dataset(
-        N=args.n_test, n=cfg.simulation.n, noise_type=cfg.simulation.noise_type,
-        rho=cfg.simulation.rho, mu_range=cfg.simulation.mu_range,
-        sigma=cfg.simulation.sigma, seed=args.seed,
+        N=args.n_test, n=cfg.dataset.n, noise_type=cfg.dataset.noise_type,
+        rho=cfg.dataset.rho, sigma=cfg.dataset.sigma,
+        cauchy_scale=cfg.dataset.cauchy_scale,
+        snr_based_mu=cfg.dataset.snr_based_mu, seed=args.seed,
     )
     preprocess = build_preprocessing_pipeline(
-        noise_type=cfg.simulation.noise_type,
+        noise_type=cfg.dataset.noise_type,
         use_squared=cfg.model.use_squared,
         use_cross_product=cfg.model.use_cross_product,
     )
@@ -285,7 +282,7 @@ def main() -> None:
             all_preds.append((p >= 0.5).astype(int))
     nn_probs = np.concatenate(all_probs)
     nn_preds = np.concatenate(all_preds)
-    taus_pred_nn = np.where(nn_preds == 1, cfg.simulation.n // 2, 0)
+    taus_pred_nn = np.where(nn_preds == 1, cfg.dataset.n // 2, 0)
     nn_result = evaluate_detector(y_test, nn_preds, taus_test, taus_pred_nn)
 
     # CUSUM inference
@@ -317,7 +314,7 @@ def main() -> None:
     # ─────────────────────────────────────────────���────────────────────────────
     print("Plotting simulated sequences...")
     fig1, axes1 = plt.subplots(1, 3, figsize=(15, 4), sharey=False)
-    plot_simulated_sequences(axes1, n=cfg.simulation.n, seed=0)
+    plot_simulated_sequences(axes1, n=cfg.dataset.n, seed=0)
     fig1.suptitle("Simulated Time Series — Three Noise Profiles", fontsize=13, fontweight="bold")
     fig1.tight_layout()
     fig1.savefig(out_dir / "fig1_simulated_sequences.png", dpi=150, bbox_inches="tight")
