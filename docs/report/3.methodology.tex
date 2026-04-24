@@ -1,23 +1,241 @@
 \section{Phương pháp luận}
 
-Bài báo tiếp cận bài toán phát hiện điểm thay đổi bằng cách chuyển đổi nó thành một bài toán phân loại (classification) sử dụng mạng nơ-ron sâu (Deep Learning). Thay vì thiết kế một thống kê kiểm định thủ công dựa trên mô hình dữ liệu (như phương pháp CUSUM truyền thống), phương pháp này học trực tiếp một hàm ánh xạ $\psi(X)$ từ tập dữ liệu huấn luyện để quyết định xem một chuỗi thời gian $X$ có chứa điểm thay đổi hay không.
+Bài báo~\cite{li2024automatic} tiếp cận bài toán phát hiện điểm thay đổi bằng cách chuyển đổi nó thành một bài toán phân
+loại (classification) sử dụng mạng nơ-ron sâu (Deep Learning). Thay vì thiết kế một thống kê kiểm định thủ công dựa
+trên mô hình dữ liệu (như phương pháp CUSUM truyền thống~\cite{page1954cusum}),
+phương pháp này học trực tiếp một hàm ánh xạ $\psi(X)$ từ tập dữ liệu huấn luyện để quyết định
+xem một chuỗi thời gian $X$ có chứa điểm thay đổi hay không.
 
-\subsection{Mạng truyền thẳng nhiều lớp (MLP) cho chuỗi đơn giản}
-Đối với chuỗi thời gian một chiều cơ bản (1D), phương pháp sử dụng kiến trúc mạng truyền thẳng nhiều lớp (Multi-layer Perceptron - MLP) với hàm kích hoạt ReLU. 
-Dựa vào lý thuyết biểu diễn, các tác giả đề xuất sử dụng độ rộng lớp ẩn dựa trên logarit của chiều dài chuỗi $n$: $m_1 = 4\lfloor\log_2(n)\rfloor$ (mạng đã được tỉa - pruned) hoặc $m_2 = 2n-2$ (mạng kích thước đầy đủ tương đương biến đổi CUSUM). Số lượng lớp ẩn $L$ được thử nghiệm với các cấu hình $L \in \{1, 5, 10\}$.
+\subsection{Chuyển đổi bài toán: Từ Kiểm định Thống kê sang Phân loại Nhị phân}
 
-\subsection{Mạng tích chập thặng dư sâu (Deep Residual CNN) cho chuỗi phức tạp}
-Đối với dữ liệu đa chiều, có độ phức tạp cao như tín hiệu cảm biến (VD: dữ liệu chuyển động HASC), một kiến trúc mạng nơ-ron truyền thẳng cơ bản là không đủ để trích xuất đặc trưng. Nghiên cứu đề xuất sử dụng \textbf{Mạng Tích Chập Thặng Dư Sâu (Residual CNN)}.
+Ý tưởng then chốt là xem mỗi chuỗi quan sát $X = (X_1, \ldots, X_n)^\top$ như một \textit{mẫu dữ liệu} (sample) 
+và gán cho nó một \textit{nhãn} (label) $Y \in \{0, 1\}$:
 \begin{itemize}
-    \item \textbf{Đặc điểm cấu trúc:} Mạng bao gồm 21 khối thặng dư (residual blocks) kết hợp với các kết nối tắt (skip connections) nhằm giải quyết hiện tượng suy biến đạo hàm (vanishing gradient).
-    \item \textbf{Phân loại đa lớp:} Phần đầu ra (Classification head) sử dụng chuỗi các lớp kết nối đầy đủ (Dense layers). Tùy thuộc vào yêu cầu của tập dữ liệu (phân loại nhị phân hay phân loại nhiều nhãn chuyển tiếp), các lớp Dense cuối cùng có thể được loại bỏ hoặc tinh chỉnh số lượng nơ-ron để phù hợp với không gian nhãn.
+    \item $Y = 0$: Chuỗi $X$ không chứa điểm thay đổi (trạng thái tĩnh - pure state).
+    \item $Y = 1$: Chuỗi $X$ chứa ít nhất một điểm thay đổi (trạng thái chuyển tiếp - transitional state).
 \end{itemize}
 
-\subsection{Thuật toán định vị đa điểm thay đổi (Algorithm 1)}
-Mạng nơ-ron được huấn luyện để phân loại một đoạn dữ liệu kích thước cố định. Để phát hiện \textit{nhiều điểm thay đổi} liên tiếp trong một chuỗi thời gian dài vô hạn, nghiên cứu đề xuất \textbf{Thuật toán 1} hoạt động trên cơ chế cửa sổ trượt (sliding window):
+Bằng cách này, toàn bộ bài toán kiểm định giả thuyết $H_0$ vs $H_1$ (đã định nghĩa ở Mục 2.2) 
+được quy về bài toán tối ưu hóa một bộ phân loại nhị phân $\psi: \mathbb{R}^n \rightarrow \{0, 1\}$ 
+sao cho rủi ro phân loại sai $\mathbb{P}(\psi(X) \neq Y)$ là nhỏ nhất. Khác với thống kê cổ điển mà ở đó 
+ta kiểm soát riêng rẽ sai lầm Loại I và sai lầm Loại II, phương pháp này tối
+ ưu trực tiếp \textbf{tỷ lệ phân loại sai tổng thể} (0-1 loss / mis-classification error rate)
+  trên toàn bộ không gian tham số.
+
+\subsection{Cấu hình MLP và Sự tương đương giữa DNN với CUSUM}
+
+Dựa trên kiến trúc MLP tổng quát đã trình bày ở Mục 2.3.1, phần này giải thích cách lựa chọn cấu hình
+ cụ thể cho bài toán phát hiện điểm thay đổi, và đặc biệt là chứng minh rằng mạng nơ-ron có
+  thể \textbf{bao hàm hoàn toàn} phương pháp CUSUM.
+
+\subsubsection*{1. Tại sao cần đúng $2n-2$ nơ-ron?}
+
+Một trong những kết quả lý thuyết quan trọng nhất của bài báo là chứng minh rằng thống kê CUSUM 
+có thể được biểu diễn \textit{chính xác} bằng một mạng MLP 1 lớp ẩn với $2n-2$ nơ-ron ReLU.
+
+Cụ thể, nhắc lại rằng thống kê CUSUM tại vị trí $k$ là:
+\[
+T_n(k) = \sqrt{\frac{k(n-k)}{n}} \left| \bar{X}_{1:k} - \bar{X}_{k+1:n} \right|
+\]
+
+Biểu thức bên trong dấu giá trị tuyệt đối là một hàm \textbf{tuyến tính} của $X$, 
+tức tồn tại một vector trọng số $w_k \in \mathbb{R}^n$ sao cho:
+\[
+T_n(k) = |w_k^\top X|
+\]
+
+Ta có thể phân tích giá trị tuyệt đối bằng hàm ReLU:
+\begin{equation}
+    |z| = \max(z, 0) + \max(-z, 0) = \text{ReLU}(z) + \text{ReLU}(-z)
+\end{equation}
+
+Do đó, mỗi vị trí $k \in \{1, \ldots, n-1\}$ cần đúng \textbf{2 nơ-ron ReLU}: 
+một cho $\max(w_k^\top X, 0)$ và một cho $\max(-w_k^\top X, 0)$. 
+Với $n-1$ vị trí cần kiểm tra, tổng cộng cần $2(n-1) = 2n - 2$ nơ-ron ẩn.
+
+\textbf{Ý nghĩa:} Kết quả này chứng minh rằng lớp hàm $\mathcal{H}_{1, (2n-2)}$ 
+(mạng 1 lớp ẩn, $2n-2$ nơ-ron) đã đủ để \textit{chứa} bộ phân loại CUSUM. 
+Nói cách khác, khi huấn luyện một mạng MLP với kiến trúc này bằng phương pháp Tối thiểu hóa Rủi ro Thực nghiệm (ERM),
+bộ phân loại tối ưu tìm được sẽ \textbf{ít nhất tốt bằng} CUSUM và có tiềm năng \textbf{vượt trội} hơn nếu trong
+ dữ liệu tồn tại các cấu trúc phức tạp mà CUSUM không nắm bắt được.
+
+\subsubsection*{2. Tỉa mạng (Pruning): Từ $O(n)$ xuống $O(\log n)$ nơ-ron}
+
+Mặc dù mạng $2n-2 = O(n)$ nơ-ron đảm bảo biểu diễn chính xác CUSUM, trong thực tế các nơ-ron 
+này có \textbf{độ tương quan rất cao} với nhau (các trung bình $\bar{X}_{1:k}$ tại các vị trí $k$ 
+kề nhau gần như giống nhau). Bằng cách xấp xỉ, ta chỉ cần lấy mẫu ở $O(\log n)$ vị trí chia 
+nhị phân (binary splitting) mà vẫn giữ được hầu hết thông tin của CUSUM.
+
+Do đó, mạng đa lớp ($L$ lớp ẩn) với chỉ $m = 4\lfloor \log_2(n) \rfloor$ nơ-ron mỗi lớp đã đủ mạnh 
+giúp giảm đáng kể từ $O(n)$ xuống $O(\log n)$. Các tác giả thử nghiệm cấu hình $L \in \{1, 5, 10\}$ 
+để đánh giá ảnh hưởng của độ sâu lên hiệu năng.
+
+\subsubsection*{3. Biến đổi dữ liệu đầu vào (Pre-transformations)}
+Khi cần phát hiện các loại thay đổi khác ngoài trung bình mà không cần thiết kế mạng quá sâu, 
+ta có thể biến đổi dữ liệu đầu vào trước khi đưa vào mạng. Cụ thể, bài báo sử dụng:
+\begin{itemize}
+    \item \textbf{Bình phương:} Nối thêm $x_t^2$ vào đặc trưng đầu vào giúp mạng phát hiện sự thay đổi về \textit{phương sai}.
+    \item \textbf{Tích chéo:} Nối thêm $x_t \cdot x_{t+1}$ giúp mạng phát hiện sự thay đổi về \textit{tự tương quan}.
+\end{itemize}
+Các biến đổi này được kích hoạt qua các tùy chọn cấu hình \texttt{use\_squared} và \texttt{use\_cross\_product}, giúp tăng chiều đặc trưng đầu vào từ $n$ lên tối đa $3n$ mà không cần thay đổi kiến trúc mạng.
+
+\subsection{Cấu hình Residual CNN cho chuỗi phức tạp}
+
+\subsubsection*{1. Tại sao dùng CNN?}
+Khi mở rộng bài toán từ việc chỉ phát hiện một loại thay đổi cơ bản 
+(thay đổi giá trị trung bình) sang \textbf{phát hiện đồng thời nhiều loại thay đổi phức tạp} 
+(ví dụ: hỗn hợp thay đổi về giá trị trung bình, phương sai và độ dốc), 
+mạng MLP cơ bản không còn đủ khả năng xử lý. Các tác giả nhận thấy có sự tương đồng 
+lớn giữa xử lý tín hiệu chuỗi thời gian và nhận dạng hình ảnh: cả hai đều cần trích xuất
+ các \textit{đặc trưng cục bộ} (local features) ở nhiều mức trừu tượng. 
+ Do đó, mạng CNN được sử dụng nhằm tự động học và trích xuất các đặc trưng đa 
+ dạng của nhiều loại điểm thay đổi khác nhau.
+
+
+\subsubsection*{2. Tại sao dùng cấu trúc Thặng dư (Residual blocks)?}
+Mặc dù CNN rất tốt trong việc trích xuất đặc trưng, nếu chỉ đơn thuần xếp chồng 
+(stacking) nhiều lớp CNN để làm mạng sâu hơn, mô hình sẽ gặp phải \textbf{hiện tượng triệt tiêu đạo hàm} 
+(vanishing gradients) tức là các trọng số ở các lớp đầu tiên gần như không thể cập nhật được. 
+Việc áp dụng kiến trúc khối Residual (đã trình bày ở Mục 2.3.2) với cơ chế 
+$y = \mathcal{F}(x, \{W_i\}) + x$ là giải pháp cốt lõi: dòng đạo hàm có thể truyền ngược trực tiếp
+ qua kết nối tắt, giúp mô hình học được các thay đổi phức tạp ngay cả khi mạng rất sâu.
+
+\subsubsection*{3. Tại sao 21 blocks?}
+Con số 21 khối thặng dư không phải được chọn ngẫu nhiên. 
+Các tác giả đã tiến hành thử nghiệm thực nghiệm (exploring) với nhiều cấu trúc mạng khác nhau, 
+thay đổi số lượng khối residual cũng như số lượng lớp fully connected trên các tập dữ liệu tự tạo. 
+Kết quả cho thấy kiến trúc với \textbf{21 khối thặng dư} tiếp nối bởi các lớp fully connected 
+là điểm cân bằng tối ưu, vừa đủ sâu để bắt được các tín hiệu thay đổi hỗn hợp phức tạp, 
+vừa không quá sâu để gây lãng phí tính toán hay overfitting.
+
+\subsubsection*{4. Chi tiết kiến trúc}
+Kiến trúc cụ thể được sử dụng:
+\begin{itemize}
+    \item \textbf{Backbone:} 21 khối Residual blocks với \texttt{base\_channels} = 32, \texttt{kernel\_size} = 8 cho mỗi lớp tích chập.
+    \item \textbf{Dropout:} Tỷ lệ 0.3 được áp dụng nhằm giảm thiểu overfitting, đặc biệt quan trọng khi tập dữ liệu cảm biến (HASC) có kích thước hạn chế.
+    \item \textbf{Classification Head:} Phần đầu ra sử dụng chuỗi các lớp kết nối đầy đủ (Dense layers). Tùy thuộc vào yêu cầu:
+    \begin{itemize}
+        \item \textit{Phân loại nhị phân} (có/không có điểm thay đổi): Lớp Dense cuối cùng có 1 nơ-ron + Sigmoid.
+        \item \textit{Phân loại đa nhãn} (phân biệt loại thay đổi): Lớp Dense cuối cùng có số nơ-ron bằng số nhãn + Softmax.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Tạo dữ liệu và Tiền xử lý}
+
+\subsubsection*{1. Cấu trúc tập dữ liệu mô phỏng}
+Vì mạng nơ-ron cần lượng dữ liệu lớn để huấn luyện, nghiên cứu sử dụng dữ liệu mô phỏng. 
+Tổng cộng $N$ chuỗi thời gian độ dài $n$ được sinh ra, chia thành hai nửa cân bằng:
+\begin{itemize}
+    \item $N/2$ chuỗi có điểm thay đổi: $\mu_L = 0$, điểm thay đổi $\tau \sim \text{Unif}\{2, \ldots, n-2\}$, 
+    và cường độ tín hiệu $\mu_R$ được tính dựa trên công thức SNR:
+    $$b = \sqrt{\frac{8n \log(20n)}{\tau(n-\tau)}}$$
+    với $\mu_R \sim \text{Unif}([0.5b, 1.5b] \cup [-1.5b, -0.5b])$. 
+    Công thức này xuất phát trực tiếp từ điều kiện kiểm soát sai số Loại II 
+    trong Bổ đề 4.1 (Mục 2.4): để CUSUM có thể phát hiện được điểm thay đổi, 
+    cường độ tín hiệu $|\mu_L - \mu_R|$ phải vượt ngưỡng $\sqrt{8\log(n/\epsilon)/n}$ 
+    sau khi hiệu chỉnh theo vị trí $\tau$. 
+    Như vậy, việc chọn $\mu_R$ theo công thức này đảm bảo dữ liệu mô phỏng nằm đúng 
+    vùng \textit{ranh giới phát hiện} của CUSUM --- không quá dễ (tín hiệu quá mạnh) 
+    cũng không quá khó (tín hiệu quá yếu).
+    \item $N/2$ chuỗi không có điểm thay đổi: $\mu_L = \mu_R = 0$.
+\end{itemize}
+
+Nghiên cứu thử nghiệm trên 4 kịch bản nhiễu:
+\begin{itemize}
+    \item \textbf{S1:} Nhiễu Gaussian i.i.d $\xi_t \sim \mathcal{N}(0, 1)$.
+    \item \textbf{S1':} Nhiễu AR(1) với hệ số tự tương quan cố định $\rho$: $\varepsilon_t = \rho \cdot \varepsilon_{t-1} + \xi_t$.
+    \item \textbf{S2:} Nhiễu AR(1) với hệ số biến thiên theo thời gian $\rho_t \sim \text{Unif}([0, 1])$, $\xi_t \sim \mathcal{N}(0, 2)$.
+    \item \textbf{S3:} Nhiễu Cauchy đuôi nặng $\xi_t \sim \text{Cauchy}(0, 0.3)$.
+\end{itemize}
+
+\subsubsection*{2. Tiền xử lý dữ liệu}
+\begin{itemize}
+    \item \textbf{Chuẩn hóa Min-Max:} Mỗi chuỗi được chuẩn hóa riêng biệt về khoảng $[0, 1]$ bằng phương pháp Min-Max Scaling. 
+    Điều này giúp bộ phân loại bất biến với các phép biến đổi affine (cộng/nhân hằng số). 
+    Tuy nhiên, đối với nhiễu đuôi nặng (kịch bản S3 - Cauchy), Min-Max sẽ thất bại do các giá trị cực đoan, 
+    và nghiên cứu thay thế bằng phương pháp \textbf{chuẩn hóa mạnh} sử dụng trung bình cắt tỉa (trimmed mean) v
+    à độ lệch chuẩn cắt tỉa (trimmed std) với tỷ lệ cắt 10\% mỗi phía.
+    \item \textbf{Tăng cường dữ liệu (Data Augmentation):} Sử dụng kỹ thuật đảo ngược chuỗi $(x_n, x_{n-1}, \ldots, x_1)$. 
+    Vì chuỗi đảo ngược vẫn giữ nguyên nhãn phân loại (có hoặc không có điểm thay đổi), 
+    kỹ thuật này nhân đôi kích thước tập huấn luyện một cách hiệu quả.
+\end{itemize}
+
+\subsection{Huấn luyện và Tối ưu hóa}
+
+Mặc dù mục tiêu lý thuyết là tối ưu hàm mất mát 0-1 (đã trình bày ở Mục 2.3.3a), 
+trong thực tế hàm 0-1 không khả vi nên nghiên cứu huấn luyện mạng bằng cách cực tiểu hóa hàm 
+\textbf{Binary Cross-Entropy with Logits Loss} (BCEWithLogitsLoss), 
+kết hợp lớp Sigmoid và BCE Loss vào cùng một hàm để đảm bảo tính ổn định số học.
+
+Các siêu tham số huấn luyện được sử dụng theo cấu hình thực nghiệm:
+\begin{table}[ht]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{|l|l|}
+        \hline
+        \textbf{Siêu tham số} & \textbf{Giá trị} \\
+        \hline
+        Bộ tối ưu hóa (Optimizer) & Adam ($\beta_1 = 0.9$, $\beta_2 = 0.999$) \\
+        \hline
+        Tốc độ học (Learning rate) & 0.001 \\
+        \hline
+        Số epochs & 200 \\
+        \hline
+        Batch size & 32 \\
+        \hline
+        Tỷ lệ tập validation & 10\% \\
+        \hline
+        Early stopping (patience) & 20 epochs \\
+        \hline
+        Weight decay (MLP) & 0.0 \\
+        \hline
+        Weight decay (ResCNN) & 0.0001 \\
+        \hline
+        Dropout (ResCNN) & 0.3 \\
+        \hline
+    \end{tabular}
+    \caption{Bảng siêu tham số huấn luyện}
+    \label{tab:hyperparams}
+\end{table}
+
+\subsection{Thuật toán Định vị Đa điểm Thay đổi (Algorithm 1)}
+Mạng nơ-ron được huấn luyện để phân loại một đoạn dữ liệu kích thước cố định: \textit{có} hoặc \textit{không có} 
+điểm thay đổi. Tuy nhiên, trong thực tế, ta cần một công cụ có khả năng ước lượng 
+\textbf{vị trí chính xác} của \textit{nhiều điểm thay đổi} trên một chuỗi thời gian dài, 
+chưa được gán nhãn. Thuật toán 1 cung cấp một quy trình tổng quát để chuyển đổi bộ phân loại nhị phân 
+thành một công cụ định vị đa điểm thay đổi.
+
+Thuật toán hoạt động dựa trên cơ chế \textbf{cửa sổ trượt} (sliding window), 
+lấy ý tưởng tương tự như thủ tục MOSUM (Moving Sum) trong thống kê cổ điển. Cụ thể, các bước tiến hành như sau:
+
 \begin{enumerate}
-    \item \textbf{Quét cửa sổ trượt:} Cho một cửa sổ kích thước $n$ trượt dọc theo toàn bộ chuỗi $X^*$. Tại mỗi vị trí $i$, trích xuất phân đoạn $X^*_{[i, i+n)}$.
-    \item \textbf{Chấm điểm (Scoring):} Áp dụng mô hình dự đoán $\psi(X^*_{[i, i+n)})$. Nếu mô hình dự đoán phân đoạn này chứa nhãn "chuyển tiếp" (điểm thay đổi), trả về $L_i = 1$; ngược lại nếu là nhãn "tĩnh" (pure state), trả về $L_i = 0$.
-    \item \textbf{Tính trung bình trượt:} Để làm mịn tín hiệu và chống nhiễu, tính trung bình $\bar{L}_i = \frac{1}{n} \sum_{j=i-n+1}^i L_j$.
-    \item \textbf{Định vị:} Tìm các phân đoạn cực đại mà $\bar{L}_i \ge \gamma$ (với ngưỡng $\gamma$ thường chọn là 0.5). Vị trí ước lượng của điểm thay đổi $\hat{\tau}$ chính là điểm đạt giá trị $\bar{L}_i$ cao nhất trong phân đoạn đó.
+    \item \textbf{Dự đoán trên từng cửa sổ:} Trích xuất các phân đoạn dữ liệu liên tiếp có độ dài $n$ (đóng vai trò là cửa sổ trượt), ký hiệu là $X^*_{[i, i+n)}$. 
+    Đưa từng phân đoạn qua bộ phân loại đã huấn luyện $\psi$ để dự đoán xem cửa sổ đó có chứa điểm thay đổi hay không. 
+    Kết quả trả về cho mỗi cửa sổ là nhãn $L_i \in \{0, 1\}$.
+
+    \item \textbf{Tính trung bình trượt:} Tính giá trị trung bình trượt (rolling average) của các nhãn qua các cửa sổ chồng lấn (overlapping):
+    \[
+        \bar{L}_i = \frac{1}{n} \sum_{j=i-n+1}^{i} L_j
+    \]
+    Bước này làm mịn tín hiệu và giảm ảnh hưởng của nhiễu phân loại sai lẻ tẻ.
+
+    \item \textbf{Nhận diện vùng thay đổi:} Xác định các phân đoạn cực đại (maximal segments) mà ở đó xác suất 
+    trung bình $\bar{L}_i \ge \gamma$, với ngưỡng $\gamma$ thường được chọn là $1/2$. 
+    Mỗi phân đoạn này tương ứng với một vùng nghi ngờ chứa điểm thay đổi.
+
+    \item \textbf{Định vị chính xác:} Ước lượng vị trí chính xác của từng điểm thay đổi $\hat{\tau}_r$ bằng cách 
+    tìm thời điểm mà $\bar{L}_i$ đạt giá trị cao nhất bên trong mỗi phân đoạn vừa xác định ở Bước 3.
 \end{enumerate}
+
+\textbf{Đầu vào và Đầu ra:}
+\begin{itemize}
+    \item \textbf{Đầu vào:} Chuỗi dữ liệu mới chưa biết điểm thay đổi $(x_1^*, \ldots, x_{n^*}^*)$, 
+    bộ phân loại đã huấn luyện $\psi$, và giá trị ngưỡng $\gamma$.
+    \item \textbf{Đầu ra:} Danh sách các vị trí thời gian của những điểm thay đổi đã được ước 
+    lượng $(\hat{\tau}_1, \ldots, \hat{\tau}_{\hat{\nu}})$.
+\end{itemize}
+
+Trong thực tế, các tác giả đã áp dụng thành công thuật toán kết hợp cửa sổ trượt này trên bộ dữ liệu HASC 
+(Human Activity Sensing Consortium) để quét qua toàn bộ chuỗi tín hiệu cảm biến, 
+qua đó nhận diện và định vị chính xác vị trí thời gian của nhiều điểm thay đổi khác 
+nhau trong chuỗi hoạt động thể chất liên tục của con người.
