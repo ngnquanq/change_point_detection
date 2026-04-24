@@ -1,0 +1,53 @@
+dataset:
+  N: 10000
+  cauchy_scale: 0.3
+  channel: magnitude
+  data_dir: data
+  hasc_dir: data/hasc
+  mu_range:
+  - -2.0
+  - 2.0
+  n: 100
+  noise_type: S1_prime
+  rho: 0.7
+  seed: 42
+  sigma: 1.0
+  snr_based_mu: true
+  source: simulated
+  stride: 10
+  window_size: 100
+experiment_name: rescnn_s1prime_paper
+localization:
+  gamma: 0.5
+  rolling_window: 10
+  step_size: 1
+  window_size: 100
+model:
+  architecture: rescnn
+  base_channels: 32
+  dropout: 0.3
+  kernel_size: 8
+  mlp_variant: pruned
+  n_blocks: 21
+  use_cross_product: false
+  use_squared: false
+models_dir: models
+training:
+  augment_reversed: true
+  batch_size: 32
+  epochs: 200
+  optimizer:
+    betas: !!python/tuple
+    - 0.9
+    - 0.999
+    lr: 0.001
+    momentum: 0.9
+    name: adam
+    weight_decay: 0.0
+  patience: 20
+  scheduler:
+    gamma: 0.1
+    lrf: 0.01
+    name: none
+    step_size: 50
+  val_fraction: 0.1
