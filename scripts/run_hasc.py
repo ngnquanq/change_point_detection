@@ -1,4 +1,4 @@
-#!/usr/import/env python
+#!/usr/bin/env python
 """
 Run HASC change-point detection (Section 6 of the paper).
 """
