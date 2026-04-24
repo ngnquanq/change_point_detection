@@ -14,6 +14,9 @@ import json
 import sys
 from pathlib import Path
 import os
+import random
+
+import numpy as np
 import torch
 
 # Allow running from project root without installing the package
@@ -42,6 +45,21 @@ def auto_detect_device(requested: str) -> torch.device:
     return torch.device("cpu")
 
 
+def set_global_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    try:
+        torch.use_deterministic_algorithms(True)
+    except Exception:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a change-point detection model")
     parser.add_argument("--config", type=str, required=True, help="Path to YAML config")
@@ -51,6 +69,7 @@ def main() -> None:
 
     cfg = ExperimentConfig.from_yaml(args.config)
     device = auto_detect_device(args.device)
+    set_global_seed(cfg.dataset.seed)
 
     print(f"Experiment : {cfg.experiment_name}")
     print(f"Dataset    : {cfg.dataset.source}")

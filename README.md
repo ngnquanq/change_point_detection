@@ -232,7 +232,7 @@ python scripts/reproduce_synthetic.py
 That command will:
 
 1. create or verify the canonical synthetic datasets in `data/paper_faithful/`
-2. train the canonical MLP experiments on CPU
+2. train the canonical MLP and ResCNN experiments
 3. evaluate them on the fixed test splits
 4. regenerate the teacher-facing synthetic plots
 5. write `artifacts/synthetic/manifest.json` and `artifacts/synthetic/summary.md`
@@ -243,14 +243,22 @@ That command will:
 python scripts/generate_reproducible_data.py
 
 python scripts/train.py --config configs/mlp_s1.yaml --device cpu
+python scripts/train.py --config configs/rescnn_s1_paper.yaml --device cpu
 python scripts/train.py --config configs/mlp_s1prime.yaml --device cpu
+python scripts/train.py --config configs/rescnn_s1prime_paper.yaml --device cpu
 python scripts/train.py --config configs/mlp_s2.yaml --device cpu
+python scripts/train.py --config configs/rescnn_s2_paper.yaml --device cpu
 python scripts/train.py --config configs/mlp_s3.yaml --device cpu
+python scripts/train.py --config configs/rescnn_s3_paper.yaml --device cpu
 
 python scripts/evaluate.py --experiment mlp_s1 --device cpu
+python scripts/evaluate.py --experiment rescnn_s1_paper --device cpu
 python scripts/evaluate.py --experiment mlp_s1prime --device cpu
+python scripts/evaluate.py --experiment rescnn_s1prime_paper --device cpu
 python scripts/evaluate.py --experiment mlp_s2 --device cpu
+python scripts/evaluate.py --experiment rescnn_s2_paper --device cpu
 python scripts/evaluate.py --experiment mlp_s3 --device cpu
+python scripts/evaluate.py --experiment rescnn_s3_paper --device cpu
 
 python scripts/visualize.py --experiment mlp_s1 --device cpu
 python scripts/visualize_paper_faithful_data.py
