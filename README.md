@@ -83,7 +83,9 @@ This chart is generated from the same saved `eval_results.json` files that back 
 
 The HASC example is generated from a trained binary `rescnn_hasc` checkpoint and one real accelerometer recording. It is a qualitative Algorithm 1 visualization: red lines are label-derived activity transitions, and blue dashed lines are estimated change points from the trained model.
 
-| HASC artifact/result | Value |
+The checkpoint was also run across all 18 labeled HASC recordings. Matching uses a ±100-sample tolerance, roughly ±1 second at 100Hz.
+
+| HASC training artifact/result | Value |
 |---|---:|
 | Labeled recordings loaded | 18 |
 | Sensor samples | 213,345 |
@@ -92,12 +94,21 @@ The HASC example is generated from a trained binary `rescnn_hasc` checkpoint and
 | Balanced train/validation windows | 3,854 |
 | Best validation accuracy | 0.8831 |
 | Best validation accuracy epoch | 92 |
-| `HASC1013-acc.csv` true CPs | 11 |
-| `HASC1013-acc.csv` estimated CPs | 47 |
-| `HASC1016-acc.csv` true CPs | 11 |
-| `HASC1016-acc.csv` estimated CPs | 41 |
 
-These HASC numbers are a real-data sanity check, not the main benchmark. The synthetic `paper_faithful` pipeline remains the canonical reproducible evaluation path.
+| HASC localization summary | Value |
+|---|---:|
+| Recordings evaluated | 18 |
+| True CPs | 195 |
+| Estimated CPs | 902 |
+| Matched CPs | 192 |
+| Missed CPs | 3 |
+| False positives | 710 |
+| Micro precision | 0.2129 |
+| Micro recall | 0.9846 |
+| Mean absolute error | 39.9 samples |
+| Mean estimated CPs / recording | 50.1 |
+
+These HASC numbers are a real-data sanity check, not the main benchmark. The current model has very high recall but over-detects heavily; the synthetic `paper_faithful` pipeline remains the canonical reproducible evaluation path.
 
 ## Architecture
 

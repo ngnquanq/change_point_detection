@@ -124,10 +124,13 @@ Repo hiện tại huấn luyện ResCNN nhị phân từ kênh độ lớn gia t
 với cửa sổ trượt kích thước $n=100$ và stride $10$. 
 Lần chạy hiện tại đọc được 18 recording có nhãn, tạo 3\,854 cửa sổ cân bằng cho train/validation, 
 và đạt best validation accuracy \textbf{0.8831}. 
-Khi đưa checkpoint này vào Thuật toán 1, recording \texttt{HASC1013-acc.csv} có 11 ranh giới hoạt động theo label 
-và mô hình ước lượng 47 điểm thay đổi. 
-Kết quả này cho thấy pipeline đã chạy được end-to-end trên dữ liệu thật, nhưng mô hình hiện còn báo nhiều điểm thay đổi hơn label, 
-do đó HASC ở đây chỉ nên được đọc như minh họa khả năng triển khai.
+Khi đưa checkpoint này vào Thuật toán 1 trên toàn bộ 18 recording, tập label có tổng cộng 195 ranh giới hoạt động, 
+trong khi mô hình ước lượng 902 điểm thay đổi. Với ngưỡng matching $\pm 100$ samples (khoảng 1 giây ở 100Hz), 
+mô hình match được 192/195 ranh giới thật, tương ứng micro recall \textbf{0.9846}, nhưng micro precision chỉ đạt \textbf{0.2129} 
+do có 710 điểm báo dư. Mean absolute error của các điểm đã match là 39.9 samples. 
+Kết quả này cho thấy pipeline đã chạy được end-to-end trên dữ liệu thật và ít bỏ sót transition, 
+nhưng ResCNN + Algorithm 1 hiện tại vẫn over-detect mạnh; vì vậy HASC ở đây chỉ nên được đọc như minh họa khả năng triển khai, 
+không phải benchmark định lượng chính của đồ án.
 
 \begin{figure}[htbp]
     \centering
