@@ -132,11 +132,28 @@ Kết quả này cho thấy pipeline đã chạy được end-to-end trên dữ 
 nhưng ResCNN + Algorithm 1 hiện tại vẫn over-detect mạnh; vì vậy HASC ở đây chỉ nên được đọc như minh họa khả năng triển khai, 
 không phải benchmark định lượng chính của đồ án.
 
+\textbf{Bài toán \& Cách tiếp cận:} Thách thức đặt ra là phải phát hiện khoảnh khắc chính xác mà một người chuyển từ trạng thái hoạt động
+ này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
+ Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). 
+ Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng
+  \texttt{person101}--\texttt{person105} trong 121 epoch.
+
+\textbf{Kết quả định vị:}
+
+Sau quá trình huấn luyện 121 (300 epochs nhưng early stopping ở 121 epochs) epoch, mô hình đạt được hiệu suất phân loại rất khả quan trên tập kiểm định (validation set) với mô hình tốt nhất (best model) ghi nhận các chỉ số như sau:
+\begin{itemize}
+    \item \textbf{Loss (Validation):} 0.1749
+    \item \textbf{Accuracy (Validation):} 0.9621 (96.21\%)
+    \item \textbf{F1-score (Macro):} 0.9042
+    \item \textbf{F1-score (Weighted):} 0.9608
+\end{itemize}
+
+Hình 3 minh hoạ đường cong học tập (learning curve) của mô hình ResCNN trên tập dữ liệu HASC, được trích xuất từ TensorBoard trong quá trình huấn luyện. Quá trình huấn luyện hội tụ nhanh chóng, với Validation Loss giảm dần và ổn định ở mức thấp, trong khi các chỉ số Accuracy và F1-score trên tập kiểm định luôn duy trì ở mức rất cao (trên 0.90). Sự đồng biến ổn định của các số đo này cho thấy mô hình không bị quá khớp (overfitting) và có khả năng khái quát tốt.
+
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\linewidth]{../../output/hasc_HASC1013-acc_result.png}
-    \caption{Minh họa định vị điểm thay đổi trên recording \texttt{HASC1013-acc.csv}. 
-    Đường đỏ là ranh giới hoạt động lấy từ file label; đường xanh nét đứt là điểm thay đổi do Thuật toán 1 ước lượng từ ResCNN. 
-    Panel dưới hiển thị xác suất cửa sổ có thay đổi, tín hiệu làm mượt $\bar{L}$ và ngưỡng $\gamma=0.5$.}
-    \label{fig:hasc-localization}
+    \includegraphics[width=1.0\linewidth]{hasc_learning_curve.png}
+    \caption{Đường cong học tập (Loss) và các chỉ số đánh giá (Accuracy, F1) của mô hình ResCNN trên tập kiểm định của bộ dữ liệu HASC.}
+    \label{fig:hasc_learning_curve}
 \end{figure}
+
