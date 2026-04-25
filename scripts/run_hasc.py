@@ -1,286 +1,322 @@
 #!/usr/bin/env python
 """
 Run HASC change-point detection (Section 6 of the paper).
+
+Expects pre-split data in data/hasc/splits/ (created by scripts/split_hasc.py):
+    train.npz, val.npz, meta.json
+
+Usage:
+    python scripts/split_hasc.py          # run once to create splits
+    python scripts/run_hasc.py            # train on splits
+    python scripts/run_hasc.py --epochs 200 --patience 30 --scheduler cosine
 """
 
 import argparse
-import glob
+import json
 import os
 import sys
-import time
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
+from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 # Allow running from project root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.models.rescnn import ResidualCNN
 
-def parse_hasc_file(csv_path, label_path):
-    # read csv
-    df = pd.read_csv(csv_path, header=None, names=['time', 'x', 'y', 'z'])
-    # read label
-    with open(label_path, 'r') as f:
-        lines = f.readlines()
-    labels = []
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith('#'): continue
-        parts = line.split(',')
-        if len(parts) >= 3:
-            start_t, end_t, label = float(parts[0]), float(parts[1]), parts[2]
-            labels.append((start_t, end_t, label))
-    return df, labels
 
-def extract_windows(df, labels, window_size=700, step=10):
-    windows = []
-    window_labels = []
-    
-    times = df['time'].values
-    xyz = df[['x', 'y', 'z']].values
-    
-    n_samples = len(times)
-    for i in range(0, n_samples - window_size + 1, step):
-        w_start_time = times[i]
-        w_end_time = times[i + window_size - 1]
-        
-        active_labels = []
-        for start_t, end_t, label in labels:
-            # Overlap condition
-            if not (w_end_time < start_t or w_start_time > end_t):
-                if label not in active_labels:
-                    active_labels.append(label)
-                    
-        if len(active_labels) == 0:
-            continue # ignore background/unknown
-        elif len(active_labels) == 1:
-            lbl = active_labels[0]
-        else:
-            lbl = "_to_".join(active_labels)
-            
-        windows.append(xyz[i:i+window_size].T) # shape: (3, 700)
-        window_labels.append(lbl)
-        
-    return np.array(windows, dtype=np.float32), window_labels
+# ─── Utilities ───────────────────────────────────────────────────────────────
 
-def load_all_data(base_dir="data/hasc", window_size=700, step=50):
-    train_X, train_y = [], []
-    test_X, test_y = [], []
-    
-    # We will also keep the raw df and labels for test set for Algorithm 1 plotting
-    test_sequences = {}
-    
-    persons = sorted(os.listdir(base_dir))
-    for person in persons:
-        person_dir = os.path.join(base_dir, person)
-        if not os.path.isdir(person_dir): continue
-        
-        csv_files = glob.glob(os.path.join(person_dir, "*.csv"))
-        for csv_path in csv_files:
-            label_path = csv_path.replace("-acc.csv", ".label")
-            if not os.path.exists(label_path):
-                continue
-                
-            df, labels = parse_hasc_file(csv_path, label_path)
-            
-            is_test = (person in ["person106", "person107"])
-            
-            # Extract windows
-            # Use smaller step for train, larger step or exactly 1 for test inference later
-            w_step = 10 if not is_test else step
-            X, y = extract_windows(df, labels, window_size, step=w_step)
-            
-            if is_test:
-                test_X.extend(X)
-                test_y.extend(y)
-                seq_name = os.path.basename(csv_path)
-                test_sequences[seq_name] = {"df": df, "labels": labels, "X": X, "y": y}
-            else:
-                train_X.extend(X)
-                train_y.extend(y)
-                
-    return (np.array(train_X), np.array(train_y)), (np.array(test_X), np.array(test_y)), test_sequences
+def increment_path(path):
+    """Auto-increment path: output/hasc_runs → hasc_runs2 → hasc_runs3 etc.
+    Similar to YOLO's increment_path behavior."""
+    path = str(path)
+    if not os.path.exists(path):
+        return path
+    # Try path2, path3, ...
+    i = 2
+    while True:
+        new_path = f"{path}{i}"
+        if not os.path.exists(new_path):
+            return new_path
+        i += 1
 
-def build_label_map(y_train, y_test):
-    unique_labels = sorted(list(set(y_train) | set(y_test)))
-    
-    # Pure labels don't contain "_to_"
-    pure_labels = [lbl for lbl in unique_labels if "_to_" not in lbl]
-    trans_labels = [lbl for lbl in unique_labels if "_to_" in lbl]
-    
-    # Map pure labels to first indices, then transitions
-    label2idx = {}
-    idx2label = {}
-    for i, lbl in enumerate(pure_labels + trans_labels):
-        label2idx[lbl] = i
-        idx2label[i] = lbl
-        
-    pure_indices = set(range(len(pure_labels)))
-    return label2idx, idx2label, pure_indices
 
-def train_model(X_train, y_train, num_classes, device, epochs=30, batch_size=128):
+# ─── Data loading ────────────────────────────────────────────────────────────
+
+def load_split_data(split_dir="data/hasc/splits"):
+    """Load pre-split train/val data and metadata from split_dir."""
+    # Load metadata
+    meta_path = os.path.join(split_dir, "meta.json")
+    if not os.path.exists(meta_path):
+        raise FileNotFoundError(
+            f"No meta.json found in {split_dir}. "
+            f"Run 'python scripts/split_hasc.py' first to create the splits."
+        )
+
+    with open(meta_path, "r") as f:
+        meta = json.load(f)
+
+    # Load arrays
+    train_data = np.load(os.path.join(split_dir, "train.npz"))
+    val_data = np.load(os.path.join(split_dir, "val.npz"))
+
+    X_train, y_train = train_data["X"], train_data["y"]
+    X_val, y_val = val_data["X"], val_data["y"]
+
+    # Reconstruct label maps
+    label2idx = meta["label2idx"]
+    idx2label = {int(k): v for k, v in meta["idx2label"].items()}
+    pure_indices = set(meta["pure_indices"])
+    num_classes = meta["num_classes"]
+
+    print(f"Loaded from {split_dir}:")
+    print(f"  Train: {len(X_train)} samples")
+    print(f"  Val:   {len(X_val)} samples")
+    print(f"  Classes: {num_classes} (pure: {len(pure_indices)}, "
+          f"transitions: {num_classes - len(pure_indices)})")
+
+    return X_train, y_train, X_val, y_val, num_classes, idx2label, pure_indices
+
+
+# ─── Evaluation ──────────────────────────────────────────────────────────────
+
+def evaluate_model(model, X, y, device, batch_size=512):
+    """Evaluate model on a dataset. Returns loss, accuracy, f1, per-class accuracy."""
+    model.eval()
+    criterion = nn.CrossEntropyLoss()
+
+    X_t = torch.from_numpy(X).to(device)
+    y_t = torch.from_numpy(y).long().to(device)
+
+    all_preds = []
+    total_loss = 0.0
+
+    with torch.no_grad():
+        for i in range(0, len(X_t), batch_size):
+            xb = X_t[i:i + batch_size]
+            yb = y_t[i:i + batch_size]
+            logits = model(xb)
+            loss = criterion(logits, yb)
+            total_loss += loss.item() * len(yb)
+            all_preds.append(logits.argmax(dim=1).cpu().numpy())
+
+    preds = np.concatenate(all_preds)
+
+    avg_loss = total_loss / len(y)
+    accuracy = float((preds == y).mean())
+    f1_macro = float(f1_score(y, preds, average='macro', zero_division=0))
+    f1_weighted = float(f1_score(y, preds, average='weighted', zero_division=0))
+
+    per_class_acc = {}
+    for cls in np.unique(y):
+        mask = y == cls
+        if mask.sum() > 0:
+            per_class_acc[int(cls)] = float((preds[mask] == y[mask]).mean())
+
+    return {
+        'loss': avg_loss,
+        'accuracy': accuracy,
+        'f1_macro': f1_macro,
+        'f1_weighted': f1_weighted,
+        'per_class_acc': per_class_acc,
+        'preds': preds,
+    }
+
+
+# ─── Training ────────────────────────────────────────────────────────────────
+
+def train_model(X_train, y_train, X_val, y_val, num_classes, device,
+                idx2label, epochs=100, batch_size=128, lr=0.001,
+                weight_decay=1e-4, patience=20, grad_clip=1.0,
+                scheduler_type="cosine", log_dir="output/hasc_runs",
+                checkpoint_dir="output/hasc_checkpoints"):
+    """Train ResidualCNN with TensorBoard logging, validation, and early stopping.
+
+    Args:
+        X_train, y_train: training data and labels (numpy)
+        X_val, y_val: validation data and labels (numpy)
+        num_classes: number of output classes
+        device: torch device
+        idx2label: dict mapping class index to label name
+        epochs: maximum number of training epochs
+        batch_size: training batch size
+        lr: initial learning rate
+        weight_decay: L2 regularization
+        patience: early stopping patience (0 = disable)
+        grad_clip: max gradient norm (0 = disable)
+        scheduler_type: 'cosine', 'step', or 'none'
+        log_dir: TensorBoard log directory
+        checkpoint_dir: directory to save model checkpoints
+    """
     model = ResidualCNN(n=X_train.shape[-1], in_channels=3, num_classes=num_classes)
     model = model.to(device)
-    model.train()
-    
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"Model parameters: {n_params:,}")
+
+    # TensorBoard writer
+    writer = SummaryWriter(log_dir=log_dir)
+    print(f"TensorBoard logs: {log_dir}")
+
+    # Checkpoint directory
+    os.makedirs(checkpoint_dir, exist_ok=True)
+
     X_t = torch.from_numpy(X_train).to(device)
     y_t = torch.from_numpy(y_train).long().to(device)
-    
+
     dataset = TensorDataset(X_t, y_t)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = nn.CrossEntropyLoss()
-    
+
+    # Learning rate scheduler
+    if scheduler_type == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=lr * 0.01)
+    elif scheduler_type == "step":
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=max(1, epochs // 3), gamma=0.1)
+    else:
+        scheduler = None
+
+    best_val_acc = 0.0
+    best_val_loss = float('inf')
+    best_epoch = 0
+    best_model_state = None
+    epochs_without_improve = 0
+
     for epoch in range(epochs):
-        total_loss = 0.0
-        correct = 0
-        for xb, yb in loader:
+        # ── Training ──
+        model.train()
+        train_loss = 0.0
+        train_correct = 0
+        train_total = 0
+
+        pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{epochs}",
+                    leave=False, ncols=100)
+        for xb, yb in pbar:
             optimizer.zero_grad()
             logits = model(xb)
             loss = criterion(logits, yb)
             loss.backward()
+
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
             optimizer.step()
-            
-            total_loss += loss.item() * len(yb)
+
+            train_loss += loss.item() * len(yb)
             preds = logits.argmax(dim=1)
-            correct += (preds == yb).sum().item()
-            
-        print(f"Epoch {epoch+1}/{epochs} | Loss: {total_loss/len(y_train):.4f} | Acc: {correct/len(y_train):.4f}")
-        
+            train_correct += (preds == yb).sum().item()
+            train_total += len(yb)
+
+            # Update progress bar with running stats
+            running_loss = train_loss / train_total
+            running_acc = train_correct / train_total
+            pbar.set_postfix(loss=f"{running_loss:.4f}", acc=f"{running_acc:.4f}")
+
+        train_avg_loss = train_loss / train_total
+        train_acc = train_correct / train_total
+
+        # Step scheduler
+        current_lr = optimizer.param_groups[0]['lr']
+        if scheduler is not None:
+            scheduler.step()
+
+        # ── Validation ──
+        val_metrics = evaluate_model(model, X_val, y_val, device, batch_size)
+
+        # ── TensorBoard ──
+        writer.add_scalar('Loss/train', train_avg_loss, epoch + 1)
+        writer.add_scalar('Loss/val', val_metrics['loss'], epoch + 1)
+
+        writer.add_scalar('Accuracy/train', train_acc, epoch + 1)
+        writer.add_scalar('Accuracy/val', val_metrics['accuracy'], epoch + 1)
+
+        writer.add_scalar('F1/val_macro', val_metrics['f1_macro'], epoch + 1)
+        writer.add_scalar('F1/val_weighted', val_metrics['f1_weighted'], epoch + 1)
+
+        writer.add_scalar('LearningRate', current_lr, epoch + 1)
+
+        for cls_idx, cls_acc in val_metrics['per_class_acc'].items():
+            label_name = idx2label.get(cls_idx, str(cls_idx))
+            writer.add_scalar(f'Val_PerClass_Acc/{label_name}', cls_acc, epoch + 1)
+
+        # ── Console ──
+        print(f"Epoch {epoch+1}/{epochs} | "
+              f"LR: {current_lr:.6f} | "
+              f"Train Loss: {train_avg_loss:.4f} Acc: {train_acc:.4f} | "
+              f"Val Loss: {val_metrics['loss']:.4f} Acc: {val_metrics['accuracy']:.4f} "
+              f"F1: {val_metrics['f1_macro']:.4f}")
+
+        # ── Early stopping & best model ──
+        improved = False
+        if val_metrics['accuracy'] > best_val_acc:
+            best_val_acc = val_metrics['accuracy']
+            improved = True
+        if val_metrics['loss'] < best_val_loss:
+            best_val_loss = val_metrics['loss']
+            improved = True
+
+        if improved:
+            best_epoch = epoch + 1
+            epochs_without_improve = 0
+            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            torch.save(best_model_state, os.path.join(checkpoint_dir, "best_model.pt"))
+        else:
+            epochs_without_improve += 1
+
+        if patience > 0 and epochs_without_improve >= patience:
+            print(f"\n⏹ Early stopping at epoch {epoch+1} "
+                  f"(no improvement for {patience} epochs, best was epoch {best_epoch})")
+            break
+
+    writer.close()
+
+    # Restore best model
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)
+        model = model.to(device)
+
+    print(f"\nBest Val Accuracy: {best_val_acc:.4f} (epoch {best_epoch})")
+    print(f"Checkpoint saved: {os.path.join(checkpoint_dir, 'best_model.pt')}")
     return model
 
-def algorithm_1(model, df, pure_indices, window_size=700, gamma=0.5, device='cpu'):
-    """Implement Algorithm 1 from the paper for a single test sequence."""
-    model.eval()
-    times = df['time'].values
-    xyz = df[['x', 'y', 'z']].values.astype(np.float32)
-    
-    n_star = len(times)
-    
-    # Step 1: Form windows and compute L_i
-    # Doing step=1 is too slow. We will do step=1.
-    # To speed up, we batch it.
-    print(f"Algorithm 1: Evaluating {n_star - window_size + 1} windows...")
-    L = np.zeros(n_star - window_size + 1)
-    
-    batch_size = 512
-    windows = []
-    indices = []
-    
-    for i in range(n_star - window_size + 1):
-        windows.append(xyz[i:i+window_size].T)
-        indices.append(i)
-        
-        if len(windows) == batch_size or i == n_star - window_size:
-            w_batch = torch.from_numpy(np.array(windows)).to(device)
-            with torch.no_grad():
-                logits = model(w_batch)
-                preds = logits.argmax(dim=1).cpu().numpy()
-                
-            # psi(X) = 0 if pred is pure class, else 1
-            for j, p in enumerate(preds):
-                L[indices[j]] = 0 if p in pure_indices else 1
-                
-            windows = []
-            indices = []
-            
-    # Step 2: Compute L_bar
-    L_bar = np.zeros(n_star - window_size + 1)
-    # L_bar_i = 1/n sum_{j=i-n+1}^i L_j
-    # We can use np.convolve
-    kernel = np.ones(window_size) / window_size
-    L_bar_full = np.convolve(L, kernel, mode='full')
-    L_bar = L_bar_full[window_size-1:len(L)] # Shift to match i
-    
-    # Adjust padding to match time axis
-    # L_bar_aligned[i] corresponds to time index i (the end of the window)
-    
-    # Step 3 & 4: Find maximal segments and argmax
-    # To align with timestamps, we just work with indices
-    estimated_tau_indices = []
-    
-    in_segment = False
-    s_r = 0
-    for i in range(len(L_bar)):
-        if L_bar[i] >= gamma:
-            if not in_segment:
-                s_r = i
-                in_segment = True
-        else:
-            if in_segment:
-                e_r = i - 1
-                # compute argmax
-                tau_r = s_r + np.argmax(L_bar[s_r:e_r+1])
-                # The paper says tau_r is the index. Since L_bar index i corresponds to window starting at i,
-                # the actual change point in the sequence could be around i + window_size/2.
-                # Algorithm 1: tau_r is computed directly on the L_bar index. We will add window_size/2 for the actual time.
-                estimated_tau_indices.append(tau_r + window_size // 2)
-                in_segment = False
-                
-    if in_segment:
-        e_r = len(L_bar) - 1
-        tau_r = s_r + np.argmax(L_bar[s_r:e_r+1])
-        estimated_tau_indices.append(tau_r + window_size // 2)
 
-    return times[estimated_tau_indices], L_bar
-
-def plot_hasc_results(df, true_labels, estimated_times, L_bar, output_path, window_size=700):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 8), sharex=True)
-    
-    times = df['time'].values
-    
-    # Plot 1: Accelerometer data
-    ax1.plot(times, df['x'], alpha=0.6, label='x')
-    ax1.plot(times, df['y'], alpha=0.6, label='y')
-    ax1.plot(times, df['z'], alpha=0.6, label='z')
-    
-    # Ground truth change points
-    # A change point occurs at the boundary of a label
-    gt_times = []
-    for i in range(len(true_labels) - 1):
-        gt_times.append(true_labels[i][1]) # end of current label
-        
-    for t in gt_times:
-        ax1.axvline(x=t, color='red', linestyle='-', alpha=0.8, linewidth=2, label='True CP' if t == gt_times[0] else "")
-        
-    for t in estimated_times:
-        ax1.axvline(x=t, color='blue', linestyle='--', alpha=0.8, linewidth=2, label='Est CP' if t == estimated_times[0] else "")
-        
-    ax1.set_ylabel("Accelerometer")
-    ax1.set_title("HASC Activity Data with Change Points")
-    ax1.legend(loc="upper right")
-    
-    # Plot 2: L_bar
-    # L_bar starts from index window_size-1 in terms of ending window, 
-    # but the time assigned to index i of L_bar is roughly i + window_size/2
-    l_bar_times = times[window_size//2 : window_size//2 + len(L_bar)]
-    ax2.plot(l_bar_times, L_bar, color='black', label='L_bar')
-    ax2.axhline(y=0.5, color='gray', linestyle=':', label='Gamma=0.5')
-    
-    ax2.set_xlabel("Time (s)")
-    ax2.set_ylabel("L_bar (Change Probability)")
-    ax2.legend(loc="upper right")
-    
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-    print(f"Plot saved to {output_path}")
+# ─── Main ────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="data/hasc")
-    parser.add_argument("--epochs", type=int, default=10)
+    parser = argparse.ArgumentParser(
+        description="Train HASC change-point detection model on pre-split data"
+    )
+    # Data
+    parser.add_argument("--split_dir", type=str, default="data/hasc/splits",
+                        help="Directory containing train.npz, val.npz, meta.json")
+    # Training
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--lr", type=float, default=0.001, help="Initial learning rate")
+    parser.add_argument("--weight_decay", type=float, default=1e-4, help="L2 regularization")
+    parser.add_argument("--patience", type=int, default=20, help="Early stopping patience (0=disable)")
+    parser.add_argument("--grad_clip", type=float, default=1.0, help="Gradient clipping max norm (0=disable)")
+    parser.add_argument("--scheduler", type=str, default="cosine",
+                        choices=["cosine", "step", "none"], help="LR scheduler type")
+    # Output
     parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--log_dir", type=str, default="output/hasc_runs")
+    parser.add_argument("--checkpoint_dir", type=str, default="output/hasc_checkpoints")
     args = parser.parse_args()
-    
+
+    # Device
     if args.device == "auto":
         if torch.backends.mps.is_available():
             device = torch.device("mps")
@@ -290,51 +326,54 @@ def main():
             device = torch.device("cpu")
     else:
         device = torch.device(args.device)
-        
-    print(f"Loading data from {args.data_dir}...")
-    (X_train_raw, y_train_raw), (X_test_raw, y_test_raw), test_seqs = load_all_data(args.data_dir, window_size=700, step=10)
-    
-    print(f"Train samples: {len(X_train_raw)}, Test samples: {len(X_test_raw)}")
-    
-    if len(X_train_raw) == 0:
-        print("No training data found. Ensure data/hasc has person101-105 directories with CSVs.")
-        return
-        
-    label2idx, idx2label, pure_indices = build_label_map(y_train_raw, y_test_raw)
-    num_classes = len(label2idx)
-    print(f"Detected {num_classes} classes (Pure classes: {len(pure_indices)}, Transitions: {num_classes - len(pure_indices)})")
-    
-    y_train = np.array([label2idx[lbl] for lbl in y_train_raw])
-    y_test = np.array([label2idx[lbl] for lbl in y_test_raw])
-    
-    print("Training ResCNN Model...")
-    model = train_model(X_train_raw, y_train, num_classes, device, epochs=args.epochs)
-    
-    # Test accuracy on test windows
-    model.eval()
-    X_t = torch.from_numpy(X_test_raw).to(device)
-    y_t = torch.from_numpy(y_test).to(device)
-    with torch.no_grad():
-        logits = []
-        for i in range(0, len(X_t), 512):
-            logits.append(model(X_t[i:i+512]))
-        logits = torch.cat(logits)
-        preds = logits.argmax(dim=1)
-        acc = (preds == y_t).float().mean().item()
-        print(f"Test Accuracy on windows: {acc:.4f}")
-        
-    # Evaluate Algorithm 1 on one sequence
-    if len(test_seqs) > 0:
-        seq_name = list(test_seqs.keys())[0]
-        print(f"Applying Algorithm 1 on test sequence: {seq_name}")
-        df = test_seqs[seq_name]["df"]
-        labels = test_seqs[seq_name]["labels"]
-        
-        estimated_times, L_bar = algorithm_1(model, df, pure_indices, window_size=700, gamma=0.5, device=device)
-        print(f"Estimated Change Points: {estimated_times}")
-        
-        os.makedirs("output", exist_ok=True)
-        plot_hasc_results(df, labels, estimated_times, L_bar, f"output/hasc_{seq_name}_algo1.png")
+    print(f"Device: {device}")
+
+    # ── Load pre-split data ──
+    X_train, y_train, X_val, y_val, num_classes, idx2label, pure_indices = \
+        load_split_data(args.split_dir)
+
+    # Print class distribution
+    print("\nClass distribution:")
+    print(f"  {'idx':>3s}  {'label':30s} {'train':>6s} {'val':>5s}")
+    print("  " + "-" * 50)
+    for cls_idx in sorted(idx2label.keys()):
+        name = idx2label[cls_idx]
+        n_train = int((y_train == cls_idx).sum())
+        n_val = int((y_val == cls_idx).sum())
+        marker = "" if cls_idx in pure_indices else " (trans)"
+        print(f"  [{cls_idx:2d}] {name:30s} {n_train:6d} {n_val:5d}{marker}")
+
+    # ── Auto-increment run directories ──
+    log_dir = increment_path(args.log_dir)
+    checkpoint_dir = increment_path(args.checkpoint_dir)
+    print(f"Log dir: {log_dir}")
+    print(f"Checkpoint dir: {checkpoint_dir}")
+
+    # ── Train ──
+    print("\nTraining ResCNN Model...")
+    model = train_model(
+        X_train, y_train, X_val, y_val,
+        num_classes, device, idx2label,
+        epochs=args.epochs, batch_size=args.batch_size,
+        lr=args.lr, weight_decay=args.weight_decay,
+        patience=args.patience, grad_clip=args.grad_clip,
+        scheduler_type=args.scheduler,
+        log_dir=log_dir, checkpoint_dir=checkpoint_dir,
+    )
+
+    # ── Final val evaluation (with best model) ──
+    print("\n=== Final Validation Evaluation (best model) ===")
+    val_metrics = evaluate_model(model, X_val, y_val, device)
+    print(f"Val Loss: {val_metrics['loss']:.4f}")
+    print(f"Val Accuracy: {val_metrics['accuracy']:.4f}")
+    print(f"Val F1 (macro): {val_metrics['f1_macro']:.4f}")
+    print(f"Val F1 (weighted): {val_metrics['f1_weighted']:.4f}")
+
+    print("\nPer-class val accuracy:")
+    for cls_idx, cls_acc in sorted(val_metrics['per_class_acc'].items()):
+        name = idx2label.get(cls_idx, str(cls_idx))
+        print(f"  [{cls_idx:2d}] {name:30s} acc={cls_acc:.4f}")
+
 
 if __name__ == "__main__":
     main()
