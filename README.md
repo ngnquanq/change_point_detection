@@ -8,7 +8,7 @@ The core idea: recast offline change-point detection as **supervised binary clas
 
 > **Synthetic reproducibility note:** the canonical teacher-facing workflow now uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. HASC is not part of that reproducibility path.
 
-> **📦 Data & Model Weights:** datasets và model checkpoints (bao gồm HASC splits và `models/hasc/best_model.pt`) có thể tải tại [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c0104944_student_hcmus_edu_vn/IgD6TycOrcnzRIuUV1TI8CFjAVTYsNPfTk4kdeJAEHvkvzI?e=H5g3c3).
+> **📦 Data & Model Weights:** datasets và model checkpoints (bao gồm HASC splits và `models/hasc/best_model.pt`) có thể tải tại [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c0104944_student_hcmus_edu_vn/IgD6TycOrcnzRIuUV1TI8CFjAceC61XRHG5hb3CtAdblK9o?e=XhiY8P).
 
 ---
 
