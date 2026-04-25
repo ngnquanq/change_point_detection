@@ -8,7 +8,10 @@ The core idea: recast offline change-point detection as **supervised binary clas
 
 > **Synthetic reproducibility note:** the canonical teacher-facing workflow now uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. HASC is not part of that reproducibility path.
 
+> **📦 Data & Model Weights:** datasets và model checkpoints (bao gồm HASC splits và `models/hasc/best_model.pt`) có thể tải tại [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c0104944_student_hcmus_edu_vn/IgD6TycOrcnzRIuUV1TI8CFjAVTYsNPfTk4kdeJAEHvkvzI?e=H5g3c3).
+
 ---
+
 
 ## Results at a Glance
 
@@ -81,6 +84,12 @@ The ResCNN model is applied to the **HASC (Human Activity Sensing Consortium)** 
 ![HASC learning curves](docs/report/hasc_learning_curve.png)
 
 The model converges quickly and maintains consistently high validation accuracy (>90%) and F1-score throughout training with no signs of overfitting.
+
+**Confusion matrix (validation split):**
+
+![HASC confusion matrix](models/hasc/hasc_confusion.png)
+
+Row-normalised confusion matrix on the 30-class validation split (4,006 samples). Most classes achieve near-perfect recall. The two low-support multi-step transitions (`skip_to_stay_to_walk`, `stay_to_walk_to_stDown`) are the main source of error.
 
 ---
 
@@ -391,9 +400,30 @@ python scripts/run_hasc.py \
 
 # Step 3: monitor training (optional)
 tensorboard --logdir output/hasc_runs2
+
+# Step 4: evaluate the best checkpoint on the validation split
+python scripts/eval_hasc.py
+
+# with a confusion matrix PNG
+python scripts/eval_hasc.py --save_confusion output/hasc_confusion.png
+
+# full options
+python scripts/eval_hasc.py \
+    --split_dir   data/hasc/splits \
+    --checkpoint  models/hasc/best_model.pt \
+    --device      auto \
+    --batch_size  512 \
+    --save_confusion output/hasc_confusion.png
 ```
 
 Best model checkpoint is saved to `models/hasc/best_model.pt`.
+
+`eval_hasc.py` outputs:
+- Summary metrics: Loss / Accuracy / F1 (Macro) / F1 (Weighted)
+- Per-class accuracy table with pure/transition labels and `⚠` warnings for classes below 50%
+- Full `sklearn` classification report (precision, recall, F1, support per class)
+- (optional) Row-normalised confusion matrix PNG saved to `--save_confusion`
+
 
 ### Step-by-step breakdown (synthetic)
 

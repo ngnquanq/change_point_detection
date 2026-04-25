@@ -147,3 +147,11 @@ Hình 3 minh hoạ đường cong học tập (learning curve) của mô hình R
     \label{fig:hasc_learning_curve}
 \end{figure}
 
+Hình~\ref{fig:hasc_confusion} trình bày confusion matrix (chuẩn hoá theo hàng) trên toàn bộ tập kiểm định gồm 4006 mẫu. Hầu hết các lớp --- cả trạng thái thuần (pure) lẫn chuyển tiếp (transition) --- đạt recall gần như hoàn hảo. Hai lớp chuyển tiếp phức hợp có ít mẫu nhất là \texttt{skip\_to\_stay\_to\_walk} (9 mẫu, recall $= 0.22$) và \texttt{stay\_to\_walk\_to\_stDown} (6 mẫu, recall $= 0.00$), phản ánh sự mất cân bằng dữ liệu nghiêm trọng hơn là giới hạn kiến trúc.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1.0\linewidth]{../../models/hasc/hasc_confusion.png}
+    \caption{Confusion matrix chuẩn hoá theo hàng trên tập kiểm định HASC (30 lớp, 4006 mẫu). Giá trị trong mỗi ô là số lượng mẫu được phân loại vào lớp dự đoán.}
+    \label{fig:hasc_confusion}
+\end{figure}
