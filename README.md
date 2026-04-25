@@ -69,7 +69,7 @@ Three supported noise types:
 
 ![Training curves](models/mlp_s1/plots/fig2_training_curves.png)
 
-For the fresh canonical run, `mlp_s1` early-stopped at epoch 118 with best validation accuracy `0.9700`. The training history figure is regenerated from `models/mlp_s1/history.json`.
+For the fresh canonical run, `mlp_s1` trained for 118 epochs and reached best validation accuracy `0.9700` at epoch 109. The training history figure is regenerated from `models/mlp_s1/history.json`.
 
 ### Neural Network vs CUSUM
 
@@ -187,14 +187,48 @@ Windows straddling the true change point score high; windows entirely before or 
 
 ```
 change_point_detection/
-├── configs/               YAML experiment configs
-│   ├── mlp_s1.yaml        Canonical MLP on i.i.d. Gaussian noise
-│   ├── mlp_s1prime.yaml   Canonical MLP on fixed-ρ AR(1) noise
-│   ├── mlp_s2.yaml        Canonical MLP on S2 noise
-│   ├── mlp_s3.yaml        Canonical MLP on Cauchy noise
-│   └── ...                Additional non-canonical configs
+├── configs/               YAML experiment configs used by the canonical pipeline
+│   ├── mlp_s1.yaml
+│   ├── mlp_s1prime.yaml
+│   ├── mlp_s2.yaml
+│   ├── mlp_s3.yaml
+│   ├── rescnn_s1_paper.yaml
+│   ├── rescnn_s1prime_paper.yaml
+│   ├── rescnn_s2_paper.yaml
+│   └── rescnn_s3_paper.yaml
 ├── data/
 │   └── paper_faithful/    Canonical reproducible synthetic train/test splits
+│       ├── s1_*.npz       Data used for the S1 rows in the README tables
+│       ├── s1prime_*.npz  Data used for the S1' rows in the README tables
+│       ├── s2_*.npz       Data used for the S2 rows in the README tables
+│       ├── s3_*.npz       Data used for the S3 rows in the README tables
+│       └── plots/         Canonical dataset overview figures
+├── models/
+│   ├── mlp_s1/            Canonical MLP artifacts; metrics in eval_results.json
+│   ├── mlp_s1prime/
+│   ├── mlp_s2/
+│   ├── mlp_s3/
+│   ├── rescnn_s1_paper/   Canonical ResCNN artifacts; metrics in eval_results.json
+│   ├── rescnn_s1prime_paper/
+│   ├── rescnn_s2_paper/
+│   ├── rescnn_s3_paper/
+│   ├── autocpd_s1_paper/  AutoCPD MLP artifacts on the same canonical splits
+│   ├── autocpd_s1prime_paper/
+│   ├── autocpd_s2_paper/
+│   └── autocpd_s3_paper/
+├── artifacts/
+│   └── synthetic/
+│       ├── summary.md     Canonical MLP/ResCNN summary shown in the README
+│       └── manifest.json  Dataset hashes and artifact provenance
+├── output/
+│   └── comparison/
+│       ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
+│       └── comparison_results.json   Metrics used to draw that chart
+├── comparison/
+│   ├── results/
+│   │   └── AUTOCPD_PAPER_FAITHFUL_SUMMARY.md   AutoCPD table shown in the README
+│   └── scripts/
+│       └── train_autocpd_paper_faithful.py     Runs the author's MLP on canonical splits
 ├── src/
 │   ├── config.py          ExperimentConfig dataclasses + YAML I/O
 │   ├── data/
@@ -215,13 +249,20 @@ change_point_detection/
 ├── scripts/
 │   ├── reproduce_synthetic.py       Canonical one-command synthetic pipeline
 │   ├── generate_reproducible_data.py
+│   ├── plot_canonical_synthetic_comparison.py
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── locate.py
 │   ├── visualize.py
 │   └── visualize_paper_faithful_data.py
-└── tests/                 Reproducibility smoke tests
+└── tests/                 Reproducibility and model smoke tests
 ```
+
+The README tables are backed by concrete files:
+- MLP/ResCNN rows are summarized in `artifacts/synthetic/summary.md` and traced back to `models/*/eval_results.json`.
+- AutoCPD rows are summarized in `comparison/results/AUTOCPD_PAPER_FAITHFUL_SUMMARY.md` and traced back to `models/autocpd_*/eval_results.json`.
+- The Chapter 4 comparison figure is drawn from `output/comparison/comparison_results.json`, which is regenerated from those same saved `eval_results.json` files.
+- Dataset provenance and hashes are recorded in `artifacts/synthetic/manifest.json`.
 
 ---
 
@@ -273,6 +314,7 @@ python scripts/evaluate.py --experiment rescnn_s3_paper --device cpu
 
 python scripts/visualize.py --experiment mlp_s1 --device cpu
 python scripts/visualize_paper_faithful_data.py
+python scripts/plot_canonical_synthetic_comparison.py
 
 python scripts/reproduce_synthetic.py --step manifest
 python scripts/reproduce_synthetic.py --step verify

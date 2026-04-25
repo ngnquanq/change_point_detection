@@ -15,27 +15,31 @@ liệu mạng nơ-ron có thể hoạt động như một "nhà thống kê tự
     \item \textbf{S2:} Nhiễu AR(1) biến đổi theo thời gian, với $\rho_t \sim \text{Unif}[0, 1]$.
     \item \textbf{S3:} Nhiễu phân phối đuôi nặng Cauchy (Cauchy noise) với tỉ lệ $\text{scale} = 0.3$.
 \end{itemize}
-Hai loại đánh giá được thực hiện với các kích thước mẫu khác nhau:
+Ba cách trình bày kết quả được sử dụng để bảo đảm phần thực nghiệm nhất quán giữa hình minh hoạ và bảng số:
 \begin{itemize}
-    \item \textbf{Khảo sát tốc độ hội tụ (Hình~\ref{fig:figure2}):} kích thước tập huấn luyện $N$ được 
-    tăng dần từ 100 đến 1000 mẫu, kiểm thử trên $N_{\text{test}} = 30000$ chuỗi.
+    \item \textbf{Tóm tắt trực quan chính (Hình~\ref{fig:figure2}):} độ chính xác phát hiện, Power và FPR
+    được vẽ trực tiếp từ các file \texttt{eval\_results.json} của bốn phương pháp:
+    PyTorch MLP, ResCNN, AutoCPD MLP và CUSUM trên cùng split \texttt{paper\_faithful\_test}.
     \item \textbf{Bảng so sánh chính thức (Bảng~\ref{tab:tier2}):} các mô hình được huấn luyện 
     trên $N_{\text{train}} = 10000$ chuỗi cố định và đánh giá trên tập kiểm thử $N_{\text{test}} = 2000$ 
     chuỗi paper-faithful, sinh deterministic từ \texttt{data/paper\_faithful/} với hash SHA-256 lưu sẵn.
+    \item \textbf{Bảng đối chiếu tham chiếu (Bảng~\ref{tab:autocpd}):} MLP TensorFlow/Keras của tác giả
+    được huấn luyện và đánh giá trên đúng các split canonical nói trên để kiểm tra tính nhất quán với bản tái cài đặt PyTorch.
 \end{itemize}
 Quá trình huấn luyện sử dụng thuật toán tối ưu Adam~\cite{kingma2015adam}, với learning rate 0.001 với hàm loss Binary Cross-Entropy. 
 Mô hình mạng nơ-ron đa tầng (MLP, $h = 4\lfloor\log_2 n\rfloor = 24$ nơ-ron) và Residual CNN (21 khối) được so sánh trực tiếp 
 với kiểm định CUSUM truyền thống.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\linewidth]{../../output/comparison/figure2_comparison.png}
-    \caption{Tỷ lệ phân loại sai (MER) so với kích thước tập huấn luyện $N$ trên 4 kịch bản nhiễu. CUSUM (đường đứt nét đen)
-     là baseline thống kê cổ điển; các đường màu là các mạng MLP với cấu hình khác nhau.}
+    \caption{Tóm tắt kết quả canonical trên bốn kịch bản nhiễu từ đúng các artifact đang nuôi bảng trong report:
+    Detection Accuracy, Power và False Positive Rate của CUSUM, AutoCPD MLP, PyTorch MLP và ResCNN
+    trên các split \texttt{paper\_faithful\_test}.}
     \label{fig:figure2}
 \end{figure}
 
-\begin{table}[h]
+\begin{table}[htbp]
     \centering
     \caption{So sánh độ chính xác phát hiện trên 4 kịch bản nhiễu (ngưỡng quyết định $0.5$, $N_{\text{train}}=10000$, $N_{\text{test}}=2000$). 
     Dữ liệu sinh deterministic từ \texttt{data/paper\_faithful/}, hash SHA-256 để đảm bảo tính integrity được 
@@ -53,7 +57,7 @@ với kiểm định CUSUM truyền thống.
     \end{tabular}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[htbp]
     \centering
     \caption{So sánh trực tiếp với MLP AutoCPD trên cùng split \texttt{paper\_faithful}.}
     \label{tab:autocpd}
@@ -92,8 +96,8 @@ Kết quả ở Bảng~\ref{tab:autocpd} cho thấy AutoCPD MLP bám rất sát 
     So sánh trực tiếp này cho thấy giới hạn không chỉ nằm ở framework cài đặt, mà nằm ở chính lựa chọn MLP nông và tiền xử lý Min-Max khi gặp nhiễu đuôi nặng.
     Đây chính là minh chứng thực nghiệm cho luận điểm trung tâm của bài báo: 
     trên các phân phối nhiễu mà thống kê cổ điển không có công thức tối ưu, các mạng sâu mới phát huy hết sức mạnh. 
-    (Theo bài báo gốc~\cite{li2024automatic}, ResCNN còn vượt cả kiểm định phi tham số Wilcoxon trong cùng tình huống này, tuy nhiên nhóm chưa 
-    thực hiện việc trực tiếp so sánh đó được.)
+    (Theo phần supplementary mà bài báo gốc dẫn chiếu~\cite{li2024automatic}, một biến thể neural network có thêm bước truncation ở đầu vào còn vượt cả 
+    kiểm định phi tham số Wilcoxon trong bối cảnh nhiễu đuôi nặng; nhóm chưa thực hiện đối chiếu bổ sung đó.)
 \end{itemize}
 
 \subsection{Thí nghiệm 2: Phát hiện hỗn hợp nhiều loại thay đổi phức tạp (trích từ bài báo gốc)}

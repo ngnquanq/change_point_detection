@@ -29,8 +29,12 @@ output
 docs/**.md
 docs/report/**.log
 docs/report/**.toc
+docs/report/**.bbl
+docs/report/**.blg
 docs/report/**.fdb_latexmk
 docs/report/**.aux
 docs/report/**.gz
 docs/report/**.fls
+*.Zone.Identifier
+spliteed.*
 comparison/

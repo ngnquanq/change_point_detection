@@ -234,6 +234,14 @@
     {
       "path": "data/paper_faithful/plots/paper_faithful_summary.csv",
       "sha256": "2f65d8f395ae408056f3f65c6caf6716934e640a61cc4f3559b9da7c06ab851c"
+    },
+    {
+      "path": "output/comparison/figure2_comparison.png",
+      "sha256": "2da7d055afea80cdc467e1f92348e5f2476a566558b29302891fad3b12208b6d"
+    },
+    {
+      "path": "output/comparison/comparison_results.json",
+      "sha256": "e978ce1fcf8836ce8cf5d76268ef33572ca5a11947fc6c7c69aed4f39519403c"
     }
   ],
   "notes": {
@@ -242,6 +250,7 @@
     "canonical_models": [
       "mlp",
       "rescnn"
-    ]
+    ],
+    "figure2_source": "output/comparison/figure2_comparison.png is regenerated directly from the saved canonical eval_results.json files by scripts/plot_canonical_synthetic_comparison.py."
   }
 }

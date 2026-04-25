@@ -1,24 +1,70 @@
 \section{Kết luận}
 
-Đồ án đã hiện thực hóa và đánh giá lại phương pháp phát hiện điểm thay đổi tự động của \textbf{Li, Fearnhead, Fryzlewicz và Wang}~\cite{li2024automatic} theo hướng tái cài đặt PyTorch và kiểm chứng bằng pipeline thực nghiệm có thể lặp lại. Trên phương diện lý thuyết, bài báo gốc cho thấy bài toán kiểm định thay đổi có thể được chuyển về một bài toán phân loại nhị phân học từ dữ liệu mô phỏng; trong đó MLP có thể tái biểu diễn thống kê CUSUM~\cite{page1954cusum}, còn các kiến trúc sâu hơn như Residual CNN~\cite{he2016resnet} có khả năng mở rộng sang các lớp nhiễu mà giả định cổ điển không còn phù hợp. Kết quả thực nghiệm trong repo hiện tại xác nhận lại luận điểm này trên bốn kịch bản synthetic chuẩn hóa và có thể tái sinh deterministic.
+Đồ án đã hiện thực hóa và đánh giá lại phương pháp phát hiện điểm thay đổi tự động
+của Li và đồng nghiệp \cite{li2024automatic} theo hướng cài đặt lại sử dụng PyTorch và 
+kiểm chứng bằng pipeline thực nghiệm có thể lặp lại. 
+Trên phương diện lý thuyết, bài báo gốc cho thấy bài toán kiểm định thay đổi có
+ thể được chuyển về một bài toán phân loại nhị phân học từ dữ liệu mô phỏng mà trong đó MLP 
+ có thể tái biểu diễn được thống kê CUSUM~\cite{page1954cusum}, 
+ còn các kiến trúc sâu hơn như Residual CNN~\cite{he2016resnet} có khả năng mở rộng 
+ sang các lớp nhiễu mà giả định cổ điển không còn phù hợp. 
+ Kết quả thực nghiệm trong repo hiện tại xác nhận lại luận điểm này trên bốn kịch bản 
+ synthetic chuẩn hóa như paper và có thể tái thiết lập để đảm bảo tính integrity của thí nghiệm.
 
 \subsection*{Đóng góp của đồ án}
 \begin{itemize}
-    \item \textbf{Tái cài đặt PyTorch hoàn chỉnh cho bài toán synthetic:} chúng tôi đã cài đặt lại hai họ mô hình chính của bài báo, gồm MLP và ResCNN, cùng quy trình huấn luyện với Binary Cross-Entropy và bộ tối ưu Adam~\cite{kingma2015adam}. Pipeline dữ liệu synthetic được chuẩn hóa lại thành các tập \texttt{paper\_faithful} cố định, giúp việc huấn luyện và đánh giá không còn phụ thuộc vào dữ liệu sinh ngẫu nhiên ở mỗi lần chạy.
-    \item \textbf{Thiết lập quy trình reproducible cho dữ liệu mô phỏng:} toàn bộ bốn kịch bản S1, S1', S2 và S3 được đóng gói thành các tệp \texttt{.npz} canonical, đi kèm hash kiểm tra integrity và pipeline một lệnh để sinh dữ liệu, huấn luyện, đánh giá và tổng hợp kết quả. Nhờ đó, các bảng kết quả synthetic trong đồ án có thể được tái lập nhất quán từ cùng một mã nguồn.
-    \item \textbf{Xác nhận lại vai trò của mạng nơ-ron trên dữ liệu đơn giản:} trên kịch bản S1 với nhiễu Gaussian độc lập, cả hai mô hình học đều bám sát baseline thống kê cổ điển. Cụ thể, MLP đạt độ chính xác $0.9190$, ResCNN đạt $0.9255$, trong khi CUSUM đạt $0.8915$. Kết quả này phù hợp với lập luận của bài báo rằng mạng nơ-ron có thể học lại quy luật ra quyết định vốn do kiểm định CUSUM biểu diễn trong trường hợp thuận lợi.
-    \item \textbf{Cho thấy ưu thế rõ rệt trên các phân phối nhiễu khó:} khi chuyển sang các kịch bản có tự tương quan hoặc đuôi nặng, lợi thế của mô hình học trở nên rõ ràng hơn. Trên S1', ResCNN đạt $0.7435$ và MLP đạt $0.7290$, cao hơn rõ rệt so với CUSUM ở mức $0.5005$. Trên S2, hai mô hình học gần như ngang nhau ($0.7540$ cho MLP và $0.7525$ cho ResCNN), trong khi CUSUM vẫn chỉ ở mức $0.5000$. Đáng chú ý nhất là S3 với nhiễu Cauchy, nơi ResCNN đạt tới $0.9475$, vượt xa MLP ($0.5970$) và CUSUM ($0.5110$).
-    \item \textbf{Củng cố luận điểm trung tâm của bài báo gốc:} các kết quả trên cho thấy deep learning không chỉ tái lập được kiểm định cổ điển trong điều kiện lý tưởng, mà còn có thể khai thác đặc trưng hiệu quả hơn khi dữ liệu vi phạm mạnh các giả định tham số. Trong số các kiến trúc đã khảo sát, ResCNN là mô hình mạnh nhất về tổng thể và đặc biệt vượt trội trên bài toán có nhiễu đuôi nặng.
+    \item \textbf{Dùng PyTorch để implement lại hoàn chỉnh cho bài toán synthetic:} chúng em đã cài đặt lại hai 
+    họ mô hình chính của bài báo, gồm MLP và ResCNN, cùng quy trình huấn luyện với 
+    Binary Cross-Entropy và bộ tối ưu Adam~\cite{kingma2015adam}. 
+    Pipeline dữ liệu synthetic được chuẩn hóa lại thành các tập \texttt{paper\_faithful} cố định, 
+    giúp việc huấn luyện và đánh giá không còn phụ thuộc vào dữ liệu sinh ngẫu nhiên ở mỗi lần chạy.
+    \item \textbf{Thiết lập quy trình reproducible cho dữ liệu mô phỏng:} toàn bộ bốn kịch bản S1, S1', S2 và 
+    S3 được đóng gói thành các tệp \texttt{.npz} canonical, 
+    đi kèm hash kiểm tra integrity và pipeline một lệnh để sinh dữ liệu, 
+    huấn luyện, đánh giá và tổng hợp kết quả. Nhờ đó, các bảng kết quả synthetic trong đồ án có thể 
+    được tái lập nhất quán từ cùng một mã nguồn.
+    \item \textbf{Xác nhận lại vai trò của mạng nơ-ron trên dữ liệu đơn giản:} trên kịch bản S1 
+    với nhiễu Gaussian độc lập, cả hai mô hình học đều bám sát baseline thống kê cổ điển. 
+    Cụ thể, MLP đạt độ chính xác $0.9190$, ResCNN đạt $0.9255$, trong khi CUSUM đạt $0.8915$. 
+    Kết quả này phù hợp với lập luận của bài báo rằng mạng nơ-ron có thể học lại 
+    quy luật ra quyết định vốn do kiểm định CUSUM biểu diễn trong trường hợp 
+    dữ liệu đơn giản.
+    \item \textbf{Cho thấy ưu thế rõ rệt trên các phân phối nhiễu khó:} khi chuyển sang các kịch bản 
+    có tự tương quan hoặc đuôi nặng, lợi thế của mô hình học trở nên rõ ràng hơn. 
+    Trên S1', ResCNN đạt $0.7435$ và MLP đạt $0.7290$, cao hơn rõ rệt so với CUSUM ở mức $0.5005$. 
+    Trên S2, hai mô hình học gần như ngang nhau ($0.7540$ cho MLP và $0.7525$ cho ResCNN), 
+    trong khi CUSUM vẫn chỉ ở mức $0.5000$. Đáng chú ý nhất là S3 với nhiễu Cauchy, 
+    nơi ResCNN đạt tới $0.9475$, vượt xa MLP ($0.5970$) và CUSUM ($0.5110$).
+    \item \textbf{Củng cố luận điểm trung tâm của bài báo gốc:} các kết quả trên cho thấy deep learning 
+    không chỉ tái lập được kiểm định cổ điển trong điều kiện lý tưởng, 
+    mà còn có thể khai thác đặc trưng hiệu quả hơn khi dữ liệu vi phạm mạnh các giả định tham số. 
+    Trong số các kiến trúc đã khảo sát, ResCNN là mô hình mạnh nhất về tổng thể và 
+    đặc biệt vượt trội trên bài toán có nhiễu đuôi nặng.
 \end{itemize}
 
 \subsection*{Hạn chế và hướng phát triển}
-Mặc dù đã đạt được một pipeline synthetic tương đối hoàn chỉnh, đồ án vẫn còn một số giới hạn cần được mở rộng trong các bước tiếp theo:
+Mặc dù đã đạt được một pipeline synthetic tương đối hoàn chỉnh, 
+đồ án vẫn còn một số giới hạn cần được mở rộng trong các bước tiếp theo:
 \begin{itemize}
-    \item \textbf{Đánh giá chính thức hiện vẫn tập trung vào phân loại trên cửa sổ cố định:} kết quả reproducible hiện tại chủ yếu chốt ở bài toán phân loại cửa sổ có hay không có điểm thay đổi. Phần định vị trên chuỗi dài mới dừng ở mức minh họa deterministic, chưa được tổng hợp thành một bảng định lượng lớn với sai số $|\hat{\tau} - \tau|$ trên nhiều chuỗi.
-    \item \textbf{Baseline thống kê còn chưa phong phú:} trong đồ án hiện tại, đối chứng chính vẫn là CUSUM. Việc bổ sung thêm các baseline phi tham số hoặc các phương pháp chuyên biệt cho nhiễu tự tương quan và nhiễu đuôi nặng sẽ cho cái nhìn đầy đủ hơn về mức độ vượt trội của ResCNN.
-    \item \textbf{Chưa phân tích sâu yếu tố kiến trúc và tiền xử lý:} các kết quả hiện tại đã cho thấy MLP và ResCNN có hành vi khác nhau trên từng loại nhiễu, nhưng vẫn chưa có ablation study riêng cho các lựa chọn như pre-transform trên dữ liệu AR, chuẩn hóa robust cho nhiễu nặng đuôi, hoặc độ sâu tối ưu của ResCNN.
-    \item \textbf{Phần ứng dụng trên HASC chưa phải trọng tâm của bản hoàn thiện hiện tại:} hướng áp dụng sang dữ liệu cảm biến thực vẫn rất quan trọng, nhưng trong phiên bản này chúng tôi chủ ý chỉ kết luận chắc chắn trên phần synthetic đã reproducible. Phần đánh giá HASC sẽ được bổ sung như một bước mở rộng tiếp theo để kiểm tra khả năng chuyển từ dữ liệu mô phỏng sang dữ liệu thực.
+    \item \textbf{Đánh giá chính thức hiện vẫn tập trung vào phân loại trên fixed window size:} kết quả reproducible 
+    hiện tại chủ yếu chốt ở bài toán phân loại cửa sổ có hay không có điểm thay đổi. 
+    Phần định vị trên chuỗi dài mới dừng ở mức minh họa, chưa được tổng hợp thành một bảng định 
+    lượng lớn với sai số $|\hat{\tau} - \tau|$ trên nhiều chuỗi.
+    \item \textbf{Baseline thống kê còn chưa phong phú:} trong đồ án hiện tại, 
+    đối chứng chính vẫn là CUSUM. Việc bổ sung thêm các baseline phi tham số hoặc các phương pháp chuyên 
+    biệt cho nhiễu tự tương quan và nhiễu đuôi nặng sẽ cho cái nhìn đầy đủ hơn về mức độ vượt trội của ResCNN.
+    \item \textbf{Chưa phân tích sâu yếu tố kiến trúc và tiền xử lý:} các kết quả hiện tại đã cho thấy MLP và ResCNN có hành vi khác 
+    nhau trên từng loại nhiễu, nhưng vẫn chưa có ablation study riêng cho các lựa chọn như pre-transform 
+    trên dữ liệu AR, chuẩn hóa robust cho nhiễu nặng đuôi, hoặc độ sâu tối ưu của ResCNN.
 \end{itemize}
 
 \subsection*{Tổng kết}
-Nhìn chung, phần thực nghiệm synthetic trong repo hiện tại đã xác nhận được thông điệp quan trọng nhất của bài báo gốc: học sâu có thể đóng vai trò như một cơ chế phát hiện điểm thay đổi tự động, vừa tái lập được hành vi của kiểm định cổ điển trong trường hợp chuẩn, vừa thích nghi tốt hơn khi dữ liệu trở nên phức tạp. Việc xây dựng được một pipeline reproducible với dữ liệu canonical, kết quả có thể kiểm chứng lại và bảng tổng hợp nhất quán giúp đồ án không chỉ dừng ở mức tái cài đặt, mà còn đạt được giá trị phương pháp luận rõ ràng về tính lặp lại thực nghiệm. Trong bức tranh đó, ResCNN nổi lên là kiến trúc mạnh nhất, đặc biệt trên kịch bản Cauchy S3, và là hướng tiếp cận hứa hẹn nhất cho các nghiên cứu mở rộng sau này. Phần đánh giá trên HASC sẽ là bước tiếp theo để kiểm tra mức độ tổng quát hóa của cùng ý tưởng trên dữ liệu thực.
+Nhìn chung, phần thực nghiệm synthetic trong repo hiện tại đã xác nhận được thông điệp 
+quan trọng nhất của bài báo gốc: học sâu có thể đóng vai trò như một cơ chế phát hiện điểm thay đổi 
+tự động, vừa tái lập được hành vi của kiểm định cổ điển trong trường hợp chuẩn, 
+vừa thích nghi tốt hơn khi dữ liệu trở nên phức tạp. 
+Việc xây dựng được một pipeline reproducible với dữ liệu canonical, 
+kết quả có thể kiểm chứng lại và bảng tổng hợp nhất quán giúp đồ án không chỉ dừng ở mức tái cài đặt, 
+mà còn đạt được giá trị phương pháp luận rõ ràng về tính lặp lại thực nghiệm. 
+Trong bức tranh đó, ResCNN nổi lên là kiến trúc mạnh nhất, đặc biệt trên kịch bản Cauchy S3, 
+và là hướng tiếp cận hứa hẹn nhất cho các nghiên cứu mở rộng sau này. 

@@ -13,6 +13,7 @@ Methods compared:
 
 Usage:
     python scripts/compare_cusum_nn.py [--n 100] [--n_test 30000] [--device auto]
+    python scripts/compare_cusum_nn.py --paper-faithful [--device cpu]
 """
 from __future__ import annotations
 
@@ -207,8 +208,50 @@ SCENARIOS = {
     "S3":  {"noise_type": "S3",       "rho": 0.0,  "label": r"S3: Cauchy(0, 0.3)"},
 }
 
+CANONICAL_PAPER_FAITHFUL = {
+    "S1": ("s1_train.npz", "s1_test.npz"),
+    "S1p": ("s1prime_train.npz", "s1prime_test.npz"),
+    "S2": ("s2_train.npz", "s2_test.npz"),
+    "S3": ("s3_train.npz", "s3_test.npz"),
+}
 
-def run_experiment(n=100, N_test=30000, device_str="auto", output_dir="output/comparison", data_dir=None):
+
+def load_paper_faithful_pair(data_dir: Path, scenario_key: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Load canonical paper_faithful train/test splits for one scenario."""
+    train_name, test_name = CANONICAL_PAPER_FAITHFUL[scenario_key]
+    train_data = np.load(data_dir / train_name)
+    test_data = np.load(data_dir / test_name)
+    return train_data["X"], train_data["y"], test_data["X"], test_data["y"]
+
+
+def choose_balanced_subset(y: np.ndarray, n_samples: int, seed: int) -> np.ndarray:
+    """Select a deterministic balanced subset of indices."""
+    if n_samples % 2 != 0:
+        raise ValueError(f"Training size must be even, got {n_samples}")
+
+    pos_idx = np.flatnonzero(y == 1)
+    neg_idx = np.flatnonzero(y == 0)
+    half = n_samples // 2
+    if len(pos_idx) < half or len(neg_idx) < half:
+        raise ValueError(f"Not enough positive/negative samples to draw {n_samples} balanced examples")
+
+    rng = np.random.default_rng(seed)
+    chosen = np.concatenate([
+        rng.choice(pos_idx, size=half, replace=False),
+        rng.choice(neg_idx, size=half, replace=False),
+    ])
+    rng.shuffle(chosen)
+    return chosen
+
+
+def run_experiment(
+    n=100,
+    N_test=30000,
+    device_str="auto",
+    output_dir="output/comparison",
+    data_dir=None,
+    paper_faithful=False,
+):
     """Replicate Figure 2 from the paper."""
     if device_str == "auto":
         if torch.backends.mps.is_available():
@@ -255,19 +298,28 @@ def run_experiment(n=100, N_test=30000, device_str="auto", output_dir="output/co
         print(f"Scenario {scenario_key}: {label}")
         print(f"{'='*60}")
 
-        if data_dir is not None:
+        if paper_faithful:
+            paper_faithful_dir = Path(data_dir)
+            X_train_pool_raw, y_train_pool, X_test_raw, y_test = load_paper_faithful_pair(
+                paper_faithful_dir, scenario_key
+            )
+            print(
+                f"Loading canonical paper_faithful data from "
+                f"{paper_faithful_dir / CANONICAL_PAPER_FAITHFUL[scenario_key][0]} and "
+                f"{paper_faithful_dir / CANONICAL_PAPER_FAITHFUL[scenario_key][1]}..."
+            )
+            print(f"Using canonical test split with {len(X_test_raw)} samples.")
+        elif data_dir is not None:
             npz_path = os.path.join(data_dir, f"{noise_type}.npz")
             print(f"Loading data from {npz_path}...")
             data = np.load(npz_path)
             X_all, y_all = data["X"], data["y"]
-            
-            # Split into train and test
+
             max_N = max(N_values)
             if len(X_all) <= max_N:
                 raise ValueError(f"Dataset in {npz_path} must have more than {max_N} samples.")
             actual_N_test = min(N_test, len(X_all) - max_N)
-            
-            # Test data from the end
+
             X_test_raw = X_all[-actual_N_test:]
             y_test = y_all[-actual_N_test:]
             print(f"Using {actual_N_test} samples for testing.")
@@ -288,21 +340,14 @@ def run_experiment(n=100, N_test=30000, device_str="auto", output_dir="output/co
         for N in N_values:
             print(f"\n  N = {N}:")
 
-            if data_dir is not None:
-                # Take N samples from the beginning for training, guaranteeing 50/50 balance
+            if paper_faithful:
+                chosen_idx = choose_balanced_subset(y_train_pool, N, seed=N)
+                X_train_raw = X_train_pool_raw[chosen_idx]
+                y_train = y_train_pool[chosen_idx]
+            elif data_dir is not None:
                 train_pool_X = X_all[:-actual_N_test]
                 train_pool_y = y_all[:-actual_N_test]
-                
-                pos_idx = np.where(train_pool_y == 1)[0]
-                neg_idx = np.where(train_pool_y == 0)[0]
-                
-                half_N = N // 2
-                chosen_idx = np.concatenate([pos_idx[:half_N], neg_idx[:half_N]])
-                
-                # Shuffle the chosen indices
-                np.random.seed(N)
-                np.random.shuffle(chosen_idx)
-                
+                chosen_idx = choose_balanced_subset(train_pool_y, N, seed=N)
                 X_train_raw = train_pool_X[chosen_idx]
                 y_train = train_pool_y[chosen_idx]
             else:
@@ -419,7 +464,15 @@ if __name__ == "__main__":
                         help="Output directory")
     parser.add_argument("--data_dir", type=str, default=None,
                         help="Directory containing .npz files (S1.npz, etc.) to load instead of simulating")
+    parser.add_argument(
+        "--paper-faithful",
+        action="store_true",
+        help="Use canonical data/paper_faithful train/test splits instead of simulating fresh data",
+    )
     args = parser.parse_args()
+
+    if args.paper_faithful and args.data_dir is None:
+        args.data_dir = str(Path("data") / "paper_faithful")
 
     run_experiment(
         n=args.n,
@@ -427,4 +480,5 @@ if __name__ == "__main__":
         device_str=args.device,
         output_dir=args.output_dir,
         data_dir=args.data_dir,
+        paper_faithful=args.paper_faithful,
     )

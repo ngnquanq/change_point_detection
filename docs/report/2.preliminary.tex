@@ -31,7 +31,7 @@ Các ký hiệu toán học dưới đây cung cấp một chuẩn mực thống
 \subsection{Bài toán Phát hiện Điểm thay đổi và Phép kiểm định CUSUM}
 
 \subsubsection*{1. Định nghĩa bài toán}
-Phát hiện điểm thay đổi (Change-Point Detection) là bài toán tìm kiếm vị trí mà tại đó các thuộc tính thống kê của một chuỗi dữ liệu bị thay đổi. 
+Phát hiện điểm thay đổi (Change Point Detection) là bài toán tìm kiếm vị trí mà tại đó các thuộc tính thống kê của một chuỗi dữ liệu bị thay đổi. 
 Một trong những bài toán cơ bản nhất là phát hiện sự thay đổi về giá trị trung bình (change in mean). 
 Cụ thể, xét một chuỗi quan sát $X = (X_1, X_2, \dots, X_n)^\top$. Bài toán đặt ra là kiểm định giả thuyết:
 \begin{itemize}
@@ -51,18 +51,22 @@ trong đó $\bar{X}_{1:k}$ và $\bar{X}_{k+1:n}$ lần lượt là trung bình m
 Mặc dù là công cụ chuẩn mực trong lý thuyết thống kê, phương pháp CUSUM bộc lộ nhiều điểm yếu chí mạng khi đối mặt với dữ liệu thực tế:
 \begin{itemize}
     \item \textbf{Phụ thuộc giả định phân phối:} CUSUM đòi hỏi nhiễu của dữ liệu phải tuân theo phân phối chuẩn (Gaussian) và độc lập cùng phân phối (i.i.d).
-    \item \textbf{Kém hiệu quả với dữ liệu phức tạp:} Khi áp dụng vào dữ liệu có nhiễu đuôi nặng (heavy-tailed) hoặc nhiễu tự tương quan (auto-correlated), CUSUM thường xuyên thất bại (báo động giả cao hoặc bỏ lọt điểm thay đổi). 
+    \item \textbf{Kém hiệu quả với dữ liệu phức tạp:} Khi áp dụng vào dữ liệu có nhiễu đuôi nặng (heavy-tailed) hoặc nhiễu tự tương quan (auto-correlated), 
+    CUSUM thường xuyên thất bại (báo động giả cao hoặc bỏ lọt điểm thay đổi). 
     \item Ngoài ra, việc thiết kế thủ công các thống kê kiểm định tối ưu cho dữ liệu đa chiều hoặc tín hiệu phức tạp là cực kỳ khó khăn.
 \end{itemize}
-Những hạn chế này chính là động lực để nghiên cứu tiếp cận bài toán bằng học máy, cho phép mô hình học các đặc trưng phức tạp trực tiếp từ dữ liệu thay vì dựa vào các giả định toán học cứng nhắc.
+Những hạn chế này chính là động lực để nghiên cứu tiếp cận bài toán bằng học máy hoặc học sâu, 
+cho phép mô hình học các đặc trưng phức tạp trực tiếp từ dữ liệu thay vì dựa vào các giả định toán học cứng nhắc.
 
 \subsection{Mạng Nơ-ron (Neural Networks)}
 
-Thay vì thiết kế các thống kê thủ công như CUSUM, nghiên cứu sử dụng Mạng nơ-ron sâu để đóng vai trò như một bộ phân loại trực tiếp tín hiệu.
+Thay vì thiết kế các thống kê thủ công như CUSUM, 
+nghiên cứu sử dụng Mạng nơ-ron sâu để đóng vai trò như một bộ phân loại trực tiếp tín hiệu.
 
 \subsubsection*{1. Cấu trúc Multi Layer Perceptron (MLP)}
 
-Gọi $L \in \mathbb{Z}^+$ là số lượng lớp ẩn và $m = (m_1, \dots, m_L)^\top$ là vector độ rộng các lớp ẩn, tức $m_i$ là số node trong lớp ẩn thứ $i$. Với một mạng có $L$ lớp ẩn, ta quy ước: $m_0 = n$ (kích thước đầu vào) và $m_{L+1} = 1$ (đầu ra nhị phân).
+Gọi $L \in \mathbb{Z}^+$ là số lượng lớp ẩn và $m = (m_1, \dots, m_L)^\top$ là vector độ rộng các lớp ẩn, tức $m_i$ là số node trong lớp ẩn thứ $i$. 
+Với một mạng có $L$ lớp ẩn, ta quy ước: $m_0 = n$ (kích thước đầu vào) và $m_{L+1} = 1$ (đầu ra nhị phân).
 
 Với bất kỳ vector bias $b = (b_1, \dots, b_r)^\top \in \mathbb{R}^r$, định nghĩa \textbf{hàm kích hoạt có dịch chuyển} (shifted activation function) $\sigma_b : \mathbb{R}^r \rightarrow \mathbb{R}^r$ như sau:
 \begin{equation*}
@@ -119,7 +123,15 @@ Tuy nhiên, hàm 0-1 có đạo hàm bằng 0 ở hầu hết mọi nơi, khiế
 \textit{Tại sao cần phân tích toán học?} Việc ứng dụng Deep Learning vào thống kê thường vấp phải chỉ trích vì tính chất "hộp đen" (black-box) của chúng, gây khó khăn cho việc diễn giải cơ chế ra quyết định. Phần lý thuyết dưới đây được xây dựng nhằm cung cấp nền tảng toán học vững chắc, chứng minh rằng một mạng nơ-ron đơn giản hoàn toàn có thể bắt chước chính xác thuật toán CUSUM. Do đó, hiệu năng của mạng nơ-ron được đảm bảo ít nhất bằng hoặc vượt trội hơn CUSUM chứ không phải là sự phỏng đoán thực nghiệm thuần túy.
 
 \subsubsection*{1. Nền tảng: Phân tích Rủi ro của CUSUM}
-Trước khi đánh giá mạng nơ-ron, rủi ro phân loại sai của CUSUM cần được thiết lập chặt chẽ. Xét chuỗi dữ liệu quan sát $X \sim \mathcal{N}_n(\mu, I_n)$ độ dài $n$, trong đó vector trung bình $\mu = (\mu_L, \dots, \mu_L, \mu_R, \dots, \mu_R)^\top$ có điểm thay đổi (nếu có) tại vị trí $\tau \in [n-1]$. Định nghĩa $\eta := \tau/n \in (0, 1)$ là tỷ lệ vị trí điểm thay đổi.
+Trước khi đánh giá mạng nơ-ron, rủi ro phân loại sai của CUSUM cần được thiết lập chặt chẽ. Xét chuỗi dữ liệu quan sát
+\[
+    X \sim \mathcal{N}_n(\mu, I_n)
+\]
+độ dài $n$, trong đó vector trung bình
+\[
+    \mu = (\mu_L, \dots, \mu_L, \mu_R, \dots, \mu_R)^\top
+\]
+có điểm thay đổi (nếu có) tại vị trí $\tau \in [n-1]$. Định nghĩa $\eta := \tau/n \in (0, 1)$ là tỷ lệ vị trí điểm thay đổi.
 
 \textbf{Bổ đề 4.1} kiểm soát hai loại sai số cơ bản của CUSUM với mức ý nghĩa $\epsilon$:
 \begin{itemize}

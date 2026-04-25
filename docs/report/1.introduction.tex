@@ -18,13 +18,11 @@ Một trong những bài toán quan trọng nhất là Phát hiện Điểm thay
 Điểm thay đổi là vị trí hoặc thời điểm mà tại đó, các thuộc tính thống kê cơ bản của dữ liệu 
 (chẳng hạn như giá trị trung bình, phương sai, hoặc độ dốc) đột ngột thay đổi.
 
-\vspace{0.5cm}
 Bài toán này giúp trả lời 2 câu hỏi chính: \textit{Có sự thay đổi có cấu trúc nào xảy ra trong data hay không?}
 \textit{Và nếu có thì sự thay đổi đó xảy ra ở đâu, vào lúc nào?}. Việc tự động hóa việc nhận diện các thay đổi này 
 giúp tạo ra các ứng dụng thực tiễn trong cuộc sống, ví dụ như trong xử lí tín hiệu, phát hiện sự biến đổi trong tế bào, dự biến khí hậu, 
 theo dõi các hành vi chuyển động của con người, v.v\dots
 
-\vspace{0.5cm}
 Mặc dù có nhiều vai trò quan trọng, song các phương pháp truyền thống vẫn còn nhiều hạn chế, hầu hết nằm ở việc chúng 
 không đủ tốt để xử lí các dữ liệu phức tạp hoặc không tuân theo các phân phối như Gaussian hoặc quá phức tạp để một người 
 làm thống kê toán học có thể tinh chỉnh các tham số của bài toán thống kê trên. 
@@ -34,7 +32,6 @@ Khi áp dụng vào dữ liệu thực tế phức tạp chứa nhiễu tự tư
 (heavy-tailed Cauchy noise), các kiểm định tiêu chuẩn này thường xuyên thất bại hoặc hoạt động rất kém. 
 Thậm chí, với các dạng dữ liệu quá phức tạp, có thể còn chưa tồn tại một thống kê kiểm định chuẩn mực nào
 
-\vspace{0.5cm}
 Điều này tạo động lực để chúng ta tìm ra một phương pháp khác phù hợp hơn về mặt lý thuyết và thực tiễn.
 Thông qua các công thức toán học, nhóm nghiên cứu đã chứng minh được ta hoàn toàn có thể sử dụng mạng DNN (Deep Neural Network)
 như một nhà thống kê giúp tự động hóa bài toán kiểm định thống kê phức tạp như CUSUM thành một bài toán phân loại nhị phân thông
@@ -43,7 +40,6 @@ data của chúng ta có đầy đủ thì việc train 1 mạng DNN sẽ cho ra
 hơn là việc nhờ vào khả năng tối ưu hóa thì các DNN này hoàn toàn có thể vượt qua các công thức như CUSUM để học ra một cơ chế
 phát hiện mới, tốt hơn các phương pháp cũ khi dữ liệu của chúng ta có nhiễu và phức tạp.
 
-\vspace{0.5cm}
 Mục tiêu chính của đồ án này là hiện thực hóa, đánh giá và mở rộng phương pháp phát hiện điểm thay đổi tự động
  dựa trên Deep Learning được đề xuất bởi Li và đồng nghiệp \cite{li2024automatic}, đưa ra nhận xét cá nhân.
  Bản tái cài đặt PyTorch của nhóm cũng được đối chiếu trực tiếp với mã 
@@ -54,5 +50,4 @@ Mục tiêu chính của đồ án này là hiện thực hóa, đánh giá và 
     \item Train và tối ưu mô hình với hàm loss binary cross-entropy cũng như các kỹ thuật tiền xử lí data như min-max normalization 
     và data augmentation như reverse sequence để tăng tập huấn luyện và giúp tối ưu độ chính xác của mạng. 
 \end{itemize}hơn
-
 
