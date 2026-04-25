@@ -126,16 +126,24 @@ Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bìn
  này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
  Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). 
  Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng
-  \texttt{person101}--\texttt{person105} trong 5 epoch.
+  \texttt{person101}--\texttt{person105} trong 121 epoch.
 
 \textbf{Kết quả định vị:}
 
-% =====================================================================
-% TODO: Phần kết quả thí nghiệm HASC sẽ được tóm lược lại bởi một thành
-% viên khác trong nhóm. Chừa khoảng trống để bổ sung sau, dự kiến gồm:
-%   - Hình minh hoạ định vị qua Thuật toán 1 (output/hasc_algo1.png)
-%   - Số điểm thay đổi tìm được và độ lệch so với ground-truth
-%   - Nhận xét về khả năng tổng quát hoá sang dữ liệu thế giới thực
-% =====================================================================
+Sau quá trình huấn luyện 121 (300 epochs nhưng early stopping ở 121 epochs) epoch, mô hình đạt được hiệu suất phân loại rất khả quan trên tập kiểm định (validation set) với mô hình tốt nhất (best model) ghi nhận các chỉ số như sau:
+\begin{itemize}
+    \item \textbf{Loss (Validation):} 0.1749
+    \item \textbf{Accuracy (Validation):} 0.9621 (96.21\%)
+    \item \textbf{F1-score (Macro):} 0.9042
+    \item \textbf{F1-score (Weighted):} 0.9608
+\end{itemize}
 
-\textit{[Phần kết quả định vị HASC sẽ được bổ sung.]}
+Hình 3 minh hoạ đường cong học tập (learning curve) của mô hình ResCNN trên tập dữ liệu HASC, được trích xuất từ TensorBoard trong quá trình huấn luyện. Quá trình huấn luyện hội tụ nhanh chóng, với Validation Loss giảm dần và ổn định ở mức thấp, trong khi các chỉ số Accuracy và F1-score trên tập kiểm định luôn duy trì ở mức rất cao (trên 0.90). Sự đồng biến ổn định của các số đo này cho thấy mô hình không bị quá khớp (overfitting) và có khả năng khái quát tốt.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1.0\linewidth]{hasc_learning_curve.png}
+    \caption{Đường cong học tập (Loss) và các chỉ số đánh giá (Accuracy, F1) của mô hình ResCNN trên tập kiểm định của bộ dữ liệu HASC.}
+    \label{fig:hasc_learning_curve}
+\end{figure}
+
