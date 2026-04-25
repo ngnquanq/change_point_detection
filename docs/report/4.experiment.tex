@@ -1,12 +1,12 @@
-\section{Thực nghiệm và Kết quả đánh giá}
+\section{Thực nghiệm và kết quả đánh giá}
 
-Phần này trình bày các đánh giá toàn diện về hiệu suất của mô hình mạng nơ-ron được đề xuất, so sánh trực tiếp với các phương pháp thống kê 
-truyền thống trên cả dữ liệu mô phỏng và bộ dữ liệu điểm chuẩn thực tế.
+Phần này trình bày kết quả đánh giá các mô hình DNN được cài đặt lại, so sánh trực tiếp với các phương pháp thống kê 
+truyền thống trên cả synthetic data và dữ liệu HASC.
 
-\subsection{Thí nghiệm 1: Dữ liệu mô phỏng với một điểm thay đổi (Single Change-Point)}
+\subsection{Thí nghiệm 1: Synthetic data với một điểm thay đổi (Single Change-Point)}
 
 Mục tiêu của thí nghiệm này là kiểm chứng lý thuyết mà tác giả đưa ra: 
-liệu mạng nơ-ron có thể hoạt động như một "nhà thống kê tự động" khi đối mặt với các loại nhiễu dữ liệu khác nhau hay không. 
+liệu DNN có thể hoạt động như một "nhà thống kê tự động" khi đối mặt với các loại nhiễu dữ liệu khác nhau hay không. 
 
 \textbf{Thiết lập thí nghiệm:} Thuật toán sinh dữ liệu tạo ra chuỗi độ dài $n=100$ với 4 kịch bản nhiễu nền:
 \begin{itemize}
@@ -26,8 +26,8 @@ Ba cách trình bày kết quả được sử dụng để bảo đảm phần 
     \item \textbf{Bảng đối chiếu tham chiếu (Bảng~\ref{tab:autocpd}):} MLP TensorFlow/Keras của tác giả
     được huấn luyện và đánh giá trên đúng các split canonical nói trên để kiểm tra tính nhất quán với bản tái cài đặt PyTorch.
 \end{itemize}
-Quá trình huấn luyện sử dụng thuật toán tối ưu Adam~\cite{kingma2015adam}, với learning rate 0.001 với hàm loss Binary Cross-Entropy. 
-Mô hình mạng nơ-ron đa tầng (MLP, $h = 4\lfloor\log_2 n\rfloor = 24$ nơ-ron) và Residual CNN (21 khối) được so sánh trực tiếp 
+Quá trình huấn luyện sử dụng Adam~\cite{kingma2015adam}, learning rate 0.001 và Binary Cross-Entropy loss. 
+Multi Layer Perceptron (MLP, $h = 4\lfloor\log_2 n\rfloor = 24$ hidden units) và Residual CNN (21 Residual blocks) được so sánh trực tiếp 
 với kiểm định CUSUM truyền thống.
 
 \begin{figure}[htbp]
@@ -77,7 +77,7 @@ với kiểm định CUSUM truyền thống.
 khi dữ liệu chỉ chứa nhiễu Gaussian đơn giản, cả MLP và ResCNN đều đạt hiệu suất bám sát kiểm định CUSUM 
 (Hình~\ref{fig:figure2}). Trong Bảng~\ref{tab:tier2}, ResCNN đạt độ chính xác cao nhất ($\textbf{0.9255}$), 
 MLP đạt $0.9190$, và bản thân CUSUM cũng đạt $0.8915$ và tất cả đều ở mức xấp xỉ tiệm cận. 
-Điều này xác nhận mạng nơ-ron có khả năng \textbf{tái lập} công thức thống kê cổ điển khi dữ liệu phù hợp với giả định của nó.
+Điều này xác nhận DNN có khả năng \textbf{tái lập} công thức thống kê cổ điển khi dữ liệu phù hợp với giả định của nó.
 
 \textbf{Đối chiếu trực tiếp với mã nguồn tham chiếu AutoCPD:} Khác với các lần kiểm tra trước đây trên shared test set riêng trong thư mục \texttt{comparison/}, 
 ở bản hiện tại nhóm đã huấn luyện trực tiếp MLP TensorFlow/Keras của tác giả 
@@ -86,16 +86,16 @@ Kết quả ở Bảng~\ref{tab:autocpd} cho thấy AutoCPD MLP bám rất sát 
 ($0.9125$ so với $0.9190$ ở S1, $0.7335$ so với $0.7290$ ở S1', và $0.7475$ so với $0.7540$ ở S2). 
 Điều này củng cố rằng bản tái cài đặt PyTorch của nhóm là nhất quán với hướng tiếp cận gốc của tác giả ở các kịch bản Gaussian và AR.
 
-\textbf{Kết quả trên dữ liệu phức tạp (AR(1) và Cauchy):} Khi giả định của CUSUM bị vi phạm, lợi thế của mạng nơ-ron trở nên rõ rệt:
+\textbf{Kết quả trên dữ liệu phức tạp (AR(1) và Cauchy):} Khi giả định của CUSUM bị vi phạm, lợi thế của DNN trở nên rõ rệt:
 \begin{itemize}
     \item Trên \textbf{S1' và S2} (nhiễu tự tương quan), CUSUM sụp đổ về xác suất ngẫu nhiên ($\sim 0.50$ với FPR $\approx 1.0$, 
-    gần như luôn báo có thay đổi). Mạng nơ-ron giữ được độ chính xác trên 0.72 ở cả hai biến thể MLP và ResCNN.
+    gần như luôn báo có thay đổi). MLP và ResCNN giữ được độ chính xác trên 0.72.
     \item Trên \textbf{S3} (nhiễu Cauchy đuôi nặng), sự khác biệt kiến trúc trở nên cực kỳ rõ. 
     AutoCPD MLP sụp về mức ngẫu nhiên đúng nghĩa ($0.5000$ với FPR $= 1.0$), MLP PyTorch chỉ đạt $0.5970$, 
     trong khi ResCNN sâu đạt tới $\textbf{0.9475}$ và vượt CUSUM gần $\sim 44$ điểm phần trăm. 
     So sánh trực tiếp này cho thấy giới hạn không chỉ nằm ở framework cài đặt, mà nằm ở chính lựa chọn MLP nông và tiền xử lý Min-Max khi gặp nhiễu đuôi nặng.
     Đây chính là minh chứng thực nghiệm cho luận điểm trung tâm của bài báo: 
-    trên các phân phối nhiễu mà thống kê cổ điển không có công thức tối ưu, các mạng sâu mới phát huy hết sức mạnh. 
+    trên các phân phối nhiễu mà thống kê cổ điển không có công thức tối ưu, các mô hình học sâu mới phát huy hết sức mạnh. 
     (Theo phần supplementary mà bài báo gốc dẫn chiếu~\cite{li2024automatic}, một biến thể neural network có thêm bước truncation ở đầu vào còn vượt cả 
     kiểm định phi tham số Wilcoxon trong bối cảnh nhiễu đuôi nặng; nhóm chưa thực hiện đối chiếu bổ sung đó.)
 \end{itemize}
@@ -115,7 +115,7 @@ Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bìn
 
 \subsection{Thí nghiệm 3: Ứng dụng thực tế trên bộ dữ liệu HASC (Real-world Application)}
 
-Để khẳng định tính ứng dụng của phương pháp đề xuất, chúng em áp dụng mô hình ResCNN lên bộ dữ liệu thế giới thực
+Để kiểm tra khả năng chạy trên real-world data, chúng em áp dụng mô hình ResCNN lên bộ dữ liệu
  \textbf{HASC (Human Activity Sensing Consortium)}~\cite{hasc2011}. 
 
 \textbf{Thiết lập và kết quả:} HASC được dùng như một kiểm tra định tính trên dữ liệu cảm biến thật, 
