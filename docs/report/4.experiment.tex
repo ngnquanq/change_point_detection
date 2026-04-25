@@ -118,24 +118,22 @@ Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bìn
 Để khẳng định tính ứng dụng của phương pháp đề xuất, chúng em áp dụng mô hình ResCNN lên bộ dữ liệu thế giới thực
  \textbf{HASC (Human Activity Sensing Consortium)}~\cite{hasc2011}. 
 
-\textbf{Bối cảnh:} Bộ dữ liệu này chứa các phép đo cảm biến chuyển động 3 chiều phức tạp 
-(gia tốc kế theo trục x, y, z) lấy mẫu ở tần số 100Hz, ghi lại chuỗi hoạt động vật lý của con người với 28 nhãn như 
-'đứng yên' (stay), 'đi bộ' (walk), 'chạy bộ' (jog), 'bước lên cầu thang' (stair up), v.v.
+\textbf{Thiết lập và kết quả:} HASC được dùng như một kiểm tra định tính trên dữ liệu cảm biến thật, 
+không phải benchmark chính thức như phần synthetic. 
+Repo hiện tại huấn luyện ResCNN nhị phân từ kênh độ lớn gia tốc $\sqrt{x^2+y^2+z^2}$, 
+với cửa sổ trượt kích thước $n=100$ và stride $10$. 
+Lần chạy hiện tại đọc được 18 recording có nhãn, tạo 3\,854 cửa sổ cân bằng cho train/validation, 
+và đạt best validation accuracy \textbf{0.8831}. 
+Khi đưa checkpoint này vào Thuật toán 1, recording \texttt{HASC1013-acc.csv} có 11 ranh giới hoạt động theo label 
+và mô hình ước lượng 47 điểm thay đổi. 
+Kết quả này cho thấy pipeline đã chạy được end-to-end trên dữ liệu thật, nhưng mô hình hiện còn báo nhiều điểm thay đổi hơn label, 
+do đó HASC ở đây chỉ nên được đọc như minh họa khả năng triển khai.
 
-\textbf{Bài toán \& Cách tiếp cận:} Thách thức đặt ra là phải phát hiện khoảnh khắc chính xác mà một người chuyển từ trạng thái hoạt động
- này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
- Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). 
- Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng
-  \texttt{person101}--\texttt{person105} trong 5 epoch.
-
-\textbf{Kết quả định vị:}
-
-% =====================================================================
-% TODO: Phần kết quả thí nghiệm HASC sẽ được tóm lược lại bởi một thành
-% viên khác trong nhóm. Chừa khoảng trống để bổ sung sau, dự kiến gồm:
-%   - Hình minh hoạ định vị qua Thuật toán 1 (output/hasc_algo1.png)
-%   - Số điểm thay đổi tìm được và độ lệch so với ground-truth
-%   - Nhận xét về khả năng tổng quát hoá sang dữ liệu thế giới thực
-% =====================================================================
-
-\textit{[Phần kết quả định vị HASC sẽ được bổ sung.]}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{../../output/hasc_HASC1013-acc_result.png}
+    \caption{Minh họa định vị điểm thay đổi trên recording \texttt{HASC1013-acc.csv}. 
+    Đường đỏ là ranh giới hoạt động lấy từ file label; đường xanh nét đứt là điểm thay đổi do Thuật toán 1 ước lượng từ ResCNN. 
+    Panel dưới hiển thị xác suất cửa sổ có thay đổi, tín hiệu làm mượt $\bar{L}$ và ngưỡng $\gamma=0.5$.}
+    \label{fig:hasc-localization}
+\end{figure}

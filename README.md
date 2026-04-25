@@ -6,7 +6,7 @@ A PyTorch reimplementation of the framework from:
 
 The core idea: recast offline change-point detection as **supervised binary classification**. A neural network is trained to predict whether a short sequence of length *n* contains a change point (Y=1) or not (Y=0). Once trained, a sliding-window algorithm localizes change points in longer series.
 
-> **Synthetic reproducibility note:** the canonical teacher-facing workflow now uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. HASC is not part of that reproducibility path.
+> **Synthetic reproducibility note:** the canonical teacher-facing synthetic workflow uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. HASC is supported as a separate real-data train-and-plot workflow.
 
 ---
 
@@ -76,6 +76,28 @@ For the fresh canonical run, `mlp_s1` trained for 118 epochs and reached best va
 ![Canonical comparison](output/comparison/figure2_comparison.png)
 
 This chart is generated from the same saved `eval_results.json` files that back the README tables. It compares `CUSUM`, the authors' `AutoCPD MLP`, the PyTorch `MLP`, and `ResCNN` on the canonical `paper_faithful_test` splits using the three metrics reported in this repo: detection accuracy, power, and false positive rate.
+
+### HASC Real-Data Localization
+
+![HASC localization](output/hasc_HASC1013-acc_result.png)
+
+The HASC example is generated from a trained binary `rescnn_hasc` checkpoint and one real accelerometer recording. It is a qualitative Algorithm 1 visualization: red lines are label-derived activity transitions, and blue dashed lines are estimated change points from the trained model.
+
+| HASC artifact/result | Value |
+|---|---:|
+| Labeled recordings loaded | 18 |
+| Sensor samples | 213,345 |
+| Label change boundaries | 195 |
+| Raw windows | 21,165 |
+| Balanced train/validation windows | 3,854 |
+| Best validation accuracy | 0.8831 |
+| Best validation accuracy epoch | 92 |
+| `HASC1013-acc.csv` true CPs | 11 |
+| `HASC1013-acc.csv` estimated CPs | 47 |
+| `HASC1016-acc.csv` true CPs | 11 |
+| `HASC1016-acc.csv` estimated CPs | 41 |
+
+These HASC numbers are a real-data sanity check, not the main benchmark. The synthetic `paper_faithful` pipeline remains the canonical reproducible evaluation path.
 
 ## Architecture
 
@@ -187,14 +209,16 @@ change_point_detection/
 │   ├── rescnn_s1_paper.yaml
 │   ├── rescnn_s1prime_paper.yaml
 │   ├── rescnn_s2_paper.yaml
-│   └── rescnn_s3_paper.yaml
+│   ├── rescnn_s3_paper.yaml
+│   └── rescnn_hasc.yaml      Real-data HASC ResCNN config
 ├── data/
-│   └── paper_faithful/    Canonical reproducible synthetic train/test splits
-│       ├── s1_*.npz       Data used for the S1 rows in the README tables
-│       ├── s1prime_*.npz  Data used for the S1' rows in the README tables
-│       ├── s2_*.npz       Data used for the S2 rows in the README tables
-│       ├── s3_*.npz       Data used for the S3 rows in the README tables
-│       └── plots/         Canonical dataset overview figures
+│   ├── paper_faithful/    Canonical reproducible synthetic train/test splits
+│   │   ├── s1_*.npz       Data used for the S1 rows in the README tables
+│   │   ├── s1prime_*.npz  Data used for the S1' rows in the README tables
+│   │   ├── s2_*.npz       Data used for the S2 rows in the README tables
+│   │   ├── s3_*.npz       Data used for the S3 rows in the README tables
+│   │   └── plots/         Canonical dataset overview figures
+│   └── hasc/              Real accelerometer recordings and label files
 ├── models/
 │   ├── mlp_s1/            Canonical MLP artifacts; metrics in eval_results.json
 │   ├── mlp_s1prime/
@@ -213,9 +237,11 @@ change_point_detection/
 │       ├── summary.md     Canonical MLP/ResCNN summary shown in the README
 │       └── manifest.json  Dataset hashes and artifact provenance
 ├── output/
-│   └── comparison/
-│       ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
-│       └── comparison_results.json   Metrics used to draw that chart
+│   ├── comparison/
+│   │   ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
+│   │   └── comparison_results.json   Metrics used to draw that chart
+│   ├── rescnn_hasc/       Trained HASC checkpoint, config, history
+│   └── hasc_*_result.png  HASC Algorithm 1 localization figures
 ├── comparison/
 │   ├── results/
 │   │   └── AUTOCPD_PAPER_FAITHFUL_SUMMARY.md   AutoCPD table shown in the README
@@ -245,6 +271,7 @@ change_point_detection/
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── locate.py
+│   ├── plot_hasc.py
 │   ├── visualize.py
 │   └── visualize_paper_faithful_data.py
 └── tests/                 Reproducibility and model smoke tests
@@ -255,6 +282,7 @@ The README tables are backed by concrete files:
 - AutoCPD rows are summarized in `comparison/results/AUTOCPD_PAPER_FAITHFUL_SUMMARY.md` and traced back to `models/autocpd_*/eval_results.json`.
 - The Chapter 4 comparison figure is drawn from `output/comparison/comparison_results.json`, which is regenerated from those same saved `eval_results.json` files.
 - Dataset provenance and hashes are recorded in `artifacts/synthetic/manifest.json`.
+- The HASC localization figure is generated from `output/rescnn_hasc/best_model.pt` and a real recording under `data/hasc/`.
 
 ---
 
@@ -311,6 +339,16 @@ python scripts/plot_canonical_synthetic_comparison.py
 python scripts/reproduce_synthetic.py --step manifest
 python scripts/reproduce_synthetic.py --step verify
 ```
+
+### HASC real-data workflow
+
+```bash
+python scripts/train.py --config configs/rescnn_hasc.yaml --device cpu
+python scripts/plot_hasc.py --device cpu
+python scripts/plot_hasc.py --recording data/hasc/person107/HASC1016-acc.csv --device cpu
+```
+
+The HASC training path writes `output/rescnn_hasc/`. The default plot command writes `output/hasc_HASC1013-acc_result.png`.
 
 ### Run tests
 
