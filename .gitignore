@@ -11,6 +11,12 @@ venv/
 # Project-specific large artifacts
 # models/
 # data/
+*.pt
+*.pth
+*.keras
+data/
+models/**/runs/
+vendor/AutoCPD/
 
 # Notebooks checkpoints
 .ipynb_checkpoints/
@@ -23,8 +29,7 @@ venv/
 .pytest_cache/
 
 rwActData
-# data
-output
+data/**
 
 docs/**.md
 docs/report/**.log

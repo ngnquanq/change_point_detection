@@ -8,7 +8,6 @@ Active entrypoints live in the top-level `scripts/`, `comparison/scripts/`, and
 
 | Legacy item | Current replacement |
 |---|---|
-| `run_hasc.py` | `scripts/train.py --config configs/rescnn_hasc.yaml` plus `scripts/plot_hasc.py` |
 | `comparison/scripts/compare.py` | `scripts/plot_canonical_synthetic_comparison.py` |
 | `comparison/scripts/run_pytorch.py` | `scripts/train.py` and `scripts/evaluate.py` |
 | `comparison/scripts/run_autocpd.py` | `comparison/scripts/train_autocpd_paper_faithful.py` |

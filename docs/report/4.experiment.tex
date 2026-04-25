@@ -118,29 +118,16 @@ Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bìn
 Để kiểm tra khả năng chạy trên real-world data, chúng em áp dụng mô hình ResCNN lên bộ dữ liệu
  \textbf{HASC (Human Activity Sensing Consortium)}~\cite{hasc2011}. 
 
-\textbf{Thiết lập và kết quả:} HASC được dùng như một kiểm tra định tính trên dữ liệu cảm biến thật, 
-không phải benchmark chính thức như phần synthetic. 
-Repo hiện tại huấn luyện ResCNN nhị phân từ kênh độ lớn gia tốc $\sqrt{x^2+y^2+z^2}$, 
-với cửa sổ trượt kích thước $n=100$ và stride $10$. 
-Lần chạy hiện tại đọc được 18 recording có nhãn, tạo 3\,854 cửa sổ cân bằng cho train/validation, 
-và đạt best validation accuracy \textbf{0.8831}. 
-Khi đưa checkpoint này vào Thuật toán 1 trên toàn bộ 18 recording, tập label có tổng cộng 195 ranh giới hoạt động, 
-trong khi mô hình ước lượng 902 điểm thay đổi. Với ngưỡng matching $\pm 100$ samples (khoảng 1 giây ở 100Hz), 
-mô hình match được 192/195 ranh giới thật, tương ứng micro recall \textbf{0.9846}, nhưng micro precision chỉ đạt \textbf{0.2129} 
-do có 710 điểm báo dư. Mean absolute error của các điểm đã match là 39.9 samples. 
-Kết quả này cho thấy pipeline đã chạy được end-to-end trên dữ liệu thật và ít bỏ sót transition, 
-nhưng ResCNN + Algorithm 1 hiện tại vẫn over-detect mạnh; vì vậy HASC ở đây chỉ nên được đọc như minh họa khả năng triển khai, 
-không phải benchmark định lượng chính của đồ án.
-
 \textbf{Bài toán \& Cách tiếp cận:} Thách thức đặt ra là phải phát hiện khoảnh khắc chính xác mà một người chuyển từ trạng thái hoạt động
  này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
  Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). 
  Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng
   \texttt{person101}--\texttt{person105} trong 121 epoch.
 
-\textbf{Kết quả định vị:}
+\textbf{Kết quả phân loại hoạt động:}
 
-Sau quá trình huấn luyện 121 (300 epochs nhưng early stopping ở 121 epochs) epoch, mô hình đạt được hiệu suất phân loại rất khả quan trên tập kiểm định (validation set) với mô hình tốt nhất (best model) ghi nhận các chỉ số như sau:
+Với cấu hình tối đa 300 epoch và early stopping patience bằng 20, lần chạy hiện tại dừng ở epoch 121.
+Mô hình tốt nhất (best model) đạt được hiệu suất phân loại rất khả quan trên tập kiểm định (validation set) với các chỉ số như sau:
 \begin{itemize}
     \item \textbf{Loss (Validation):} 0.1749
     \item \textbf{Accuracy (Validation):} 0.9621 (96.21\%)
@@ -148,7 +135,7 @@ Sau quá trình huấn luyện 121 (300 epochs nhưng early stopping ở 121 epo
     \item \textbf{F1-score (Weighted):} 0.9608
 \end{itemize}
 
-Hình 3 minh hoạ đường cong học tập (learning curve) của mô hình ResCNN trên tập dữ liệu HASC, được trích xuất từ TensorBoard trong quá trình huấn luyện. Quá trình huấn luyện hội tụ nhanh chóng, với Validation Loss giảm dần và ổn định ở mức thấp, trong khi các chỉ số Accuracy và F1-score trên tập kiểm định luôn duy trì ở mức rất cao (trên 0.90). Sự đồng biến ổn định của các số đo này cho thấy mô hình không bị quá khớp (overfitting) và có khả năng khái quát tốt.
+Hình~\ref{fig:hasc_learning_curve} minh hoạ learning curve của mô hình ResCNN trên tập dữ liệu HASC, được trích xuất từ TensorBoard trong quá trình huấn luyện. Quá trình huấn luyện hội tụ nhanh chóng, với Validation Loss giảm dần và ổn định ở mức thấp, trong khi Accuracy và F1-score trên tập validation luôn duy trì trên 0.90. Sự đồng biến ổn định của các số đo này cho thấy mô hình không bị quá khớp (overfitting) và có khả năng khái quát tốt. Do giới hạn dung lượng nộp bài, checkpoint và dữ liệu HASC không được đóng gói kèm repo code; người đọc có thể tải từ OneDrive hoặc tái tạo bằng các lệnh trong README.
 
 \begin{figure}[htbp]
     \centering

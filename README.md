@@ -6,12 +6,13 @@ A PyTorch reimplementation of the framework from:
 
 The core idea: recast offline change-point detection as **supervised binary classification**. A neural network is trained to predict whether a short sequence of length *n* contains a change point (Y=1) or not (Y=0). Once trained, a sliding-window algorithm localizes change points in longer series.
 
-> **Synthetic reproducibility note:** the canonical teacher-facing synthetic workflow uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. HASC is supported as a separate real-data train-and-plot workflow.
+> **Synthetic reproducibility note:** the canonical teacher-facing synthetic workflow uses the fixed datasets in `data/paper_faithful/` plus a single entrypoint, `python scripts/reproduce_synthetic.py`. If the lightweight code package does not include `data/`, download the data bundle from OneDrive first or regenerate the synthetic splits with `python scripts/generate_reproducible_data.py`.
 
-> **📦 Data & Model Weights:** datasets và model checkpoints (bao gồm HASC splits và `models/hasc/best_model.pt`) có thể tải tại [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c0104944_student_hcmus_edu_vn/IgD6TycOrcnzRIuUV1TI8CFjAceC61XRHG5hb3CtAdblK9o?e=XhiY8P).
+> **Data & model weights:** datasets, generated splits, and checkpoints are not bundled in the lightweight code submission because of the 20MB limit. They can be downloaded from [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c0104944_student_hcmus_edu_vn/IgD6TycOrcnzRIuUV1TI8CFjAceC61XRHG5hb3CtAdblK9o?e=XhiY8P) and placed back at the same paths, e.g. `data/hasc/`, `data/paper_faithful/`, and `models/hasc/best_model.pt`.
+
+> **Submission note:** large folders such as `data/`, `models/`, and `vendor/` are stored separately on [OneDrive](https://studenthcmusedu-my.sharepoint.com/:f:/g/personal/25c2300227_student_hcmus_edu_vn/IgAmsowmk2WkTZdAYocfnKF5Ac-rPkXkv64ZajFvfHcT2BI?e=3yhNXk). After downloading them, place these folders back at the repository root before running the commands in this README.
 
 ---
-
 
 ## Results at a Glance
 
@@ -68,7 +69,8 @@ The ResCNN model is applied to the **HASC (Human Activity Sensing Consortium)** 
 - Optimizer: Adam (lr=0.001, weight_decay=1e-4)
 - Scheduler: CosineAnnealingLR
 - Early stopping: patience=20 epochs
-- TensorBoard logs: `models/hasc`
+- TensorBoard logs: `output/hasc_runs*`
+- Checkpoint path used for the reported run: `models/hasc/best_model.pt`
 
 **Final validation results (best model):**
 
@@ -91,9 +93,13 @@ The model converges quickly and maintains consistently high validation accuracy 
 
 Row-normalised confusion matrix on the 30-class validation split (4,006 samples). Most classes achieve near-perfect recall. The two low-support multi-step transitions (`skip_to_stay_to_walk`, `stay_to_walk_to_stDown`) are the main source of error.
 
+The checkpoint and generated split files are intentionally kept outside the code zip. To reproduce this table from scratch, download the HASC data bundle from OneDrive, run `scripts/split_hasc.py`, then run `scripts/run_hasc.py` and `scripts/eval_hasc.py`.
+
 ---
 
 ## Visualizations
+
+Figures shown below are generated artifacts. In the lightweight code submission, restore the matching `data/` and `models/` folders from OneDrive, then regenerate `output/` artifacts with the commands in the reproducibility section.
 
 ### Canonical Dataset Overview
 
@@ -198,19 +204,21 @@ For the canonical reproducibility path, the training and test inputs come from t
 
 Each file contains `X`, `y`, and `taus`. The matching `.hash.txt` files are used by `scripts/generate_reproducible_data.py --verify`.
 
+In the lightweight submission, `data/paper_faithful/` may be absent. Either download it from OneDrive or regenerate it locally with `python scripts/generate_reproducible_data.py`.
+
 ### HASC (Real-world)
 
 ```
 raw HASC CSV files (100 Hz, 3-axis accelerometer)
     ↓
-scripts/split_hasc.py        ← segment by person, sliding windows (n=700, stride=50),
+scripts/split_hasc.py        ← sliding windows (n=700, stride=10),
                                 label pure/transition states → train.npz + val.npz + meta.json
     ↓
 scripts/run_hasc.py          ← train ResidualCNN (3-channel, 30-class),
                                 TensorBoard logging, early stopping, best model checkpoint
     ↓
 models/hasc/best_model.pt
-output/hasc_runs2/           ← TensorBoard event files
+output/hasc_runs*/           ← TensorBoard event files
 ```
 
 ---
@@ -238,7 +246,7 @@ Models output raw logits. Sigmoid is applied post-hoc at inference only — `BCE
 | Optimizer | Adam (weight_decay=1e-4) |
 | Learning rate | 0.001 |
 | Scheduler | CosineAnnealingLR |
-| Epochs | up to 100 |
+| Epochs | up to 300 |
 | Batch size | 128 |
 | Grad clip | 1.0 |
 | Early stopping | patience = 20 epochs |
@@ -274,17 +282,10 @@ change_point_detection/
 │   ├── rescnn_s1prime_paper.yaml
 │   ├── rescnn_s2_paper.yaml
 │   ├── rescnn_s3_paper.yaml
-│   └── rescnn_hasc.yaml   HASC experiment config (3-channel, 30-class)
+│   └── rescnn_hasc.yaml   Optional binary HASC localization config
 ├── data/
-│   ├── paper_faithful/    Canonical reproducible synthetic train/test splits
-│   │   ├── s1_*.npz       Data used for the S1 rows in the README tables
-│   │   ├── s1prime_*.npz  Data used for the S1' rows in the README tables
-│   │   ├── s2_*.npz       Data used for the S2 rows in the README tables
-│   │   ├── s3_*.npz       Data used for the S3 rows in the README tables
-│   │   └── plots/         Canonical dataset overview figures
-│   └── hasc/
-│       ├── splits/        Pre-split HASC windows (train.npz, val.npz, meta.json)
-│       └── raw/           Raw HASC CSV files (not committed)
+│   ├── paper_faithful/    Canonical synthetic splits; generated or restored from OneDrive
+│   └── hasc/              Raw HASC CSV/label files; restored from OneDrive
 ├── models/
 │   ├── mlp_s1/            Canonical MLP artifacts; metrics in eval_results.json
 │   ├── mlp_s1prime/
@@ -298,19 +299,13 @@ change_point_detection/
 │   ├── autocpd_s1prime_paper/
 │   ├── autocpd_s2_paper/
 │   └── autocpd_s3_paper/
+├── vendor/
+│   └── AutoCPD/            Optional upstream implementation used for AutoCPD comparison
 ├── artifacts/
 │   └── synthetic/
 │       ├── summary.md     Canonical MLP/ResCNN summary shown in the README
 │       └── manifest.json  Dataset hashes and artifact provenance
-├── output/
-│   ├── comparison/
-│   │   ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
-│   │   └── comparison_results.json   Metrics used to draw that chart
-├── models/
-│   ├── ...
-│   └── hasc/
-│       └── best_model.pt             Best HASC checkpoint (Val Acc=0.9621)
-│   └── hasc_runs2/                   TensorBoard event files for HASC training
+├── output/                Generated plots/logs; regenerated locally, not required in code zip
 ├── comparison/
 │   ├── results/
 │   │   └── AUTOCPD_PAPER_FAITHFUL_SUMMARY.md   AutoCPD table shown in the README
@@ -320,7 +315,7 @@ change_point_detection/
 │   └── report/
 │       ├── main.tex                  Main LaTeX report
 │       ├── 4.experiment.tex          Experiment section (includes HASC results)
-│       └── hasc_learning_curve.png   HASC learning curves (extracted from TensorBoard)
+│       └── hasc_learning_curve.png   HASC learning curves shown in Chapter 4
 ├── src/
 │   ├── config.py          ExperimentConfig dataclasses + YAML I/O
 │   ├── data/
@@ -358,7 +353,7 @@ The README tables are backed by concrete files:
 - AutoCPD rows are summarized in `comparison/results/AUTOCPD_PAPER_FAITHFUL_SUMMARY.md` and traced back to `models/autocpd_*/eval_results.json`.
 - The Chapter 4 comparison figure is drawn from `output/comparison/comparison_results.json`, which is regenerated from those same saved `eval_results.json` files.
 - Dataset provenance and hashes are recorded in `artifacts/synthetic/manifest.json`.
-- The HASC localization figure is generated from `output/rescnn_hasc/best_model.pt` and a real recording under `data/hasc/`.
+- The HASC learning curve and confusion matrix in Chapter 4 are lightweight exported figures; the underlying data splits and checkpoints are restored from OneDrive or regenerated locally.
 
 ---
 
@@ -389,19 +384,21 @@ That command will:
 
 ```bash
 # Step 1: prepare pre-split HASC windows
-python scripts/split_hasc.py --hasc_dir data/hasc --out_dir data/hasc/splits
+python scripts/split_hasc.py --data_dir data/hasc --output_dir data/hasc/splits
 
 # Step 2: train the 30-class ResCNN
 python scripts/run_hasc.py \
     --split_dir data/hasc/splits \
-    --epochs 100 \
+    --epochs 300 \
     --batch_size 128 \
     --lr 0.001 \
     --scheduler cosine \
+    --checkpoint_dir models/hasc \
+    --log_dir output/hasc_runs \
     --device auto
 
 # Step 3: monitor training (optional)
-tensorboard --logdir output/hasc_runs2
+tensorboard --logdir output/hasc_runs
 
 # Step 4: evaluate the best checkpoint on the validation split
 python scripts/eval_hasc.py
@@ -418,7 +415,7 @@ python scripts/eval_hasc.py \
     --save_confusion output/hasc_confusion.png
 ```
 
-Best model checkpoint is saved to `models/hasc/best_model.pt`.
+Best model checkpoint is saved to `models/hasc/best_model.pt`. This checkpoint is not included in the lightweight code submission; restore it from OneDrive or regenerate it with the training command above.
 
 `eval_hasc.py` outputs:
 - Summary metrics: Loss / Accuracy / F1 (Macro) / F1 (Weighted)
@@ -458,7 +455,7 @@ python scripts/reproduce_synthetic.py --step manifest
 python scripts/reproduce_synthetic.py --step verify
 ```
 
-### HASC real-data workflow
+### Optional binary HASC localization workflow
 
 ```bash
 python scripts/train.py --config configs/rescnn_hasc.yaml --device cpu
@@ -466,7 +463,7 @@ python scripts/plot_hasc.py --device cpu
 python scripts/plot_hasc.py --recording data/hasc/person107/HASC1016-acc.csv --device cpu
 ```
 
-The HASC training path writes `output/rescnn_hasc/`. The default plot command writes `output/hasc_HASC1013-acc_result.png`.
+This path is separate from the 30-class HASC experiment above. It writes `output/rescnn_hasc/` and is useful for Algorithm 1 localization sanity checks, but it is not the main HASC result reported in Chapter 4.
 
 ### Run tests
 
