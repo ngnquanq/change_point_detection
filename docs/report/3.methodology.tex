@@ -151,11 +151,11 @@ Nghiên cứu thử nghiệm trên 4 kịch bản nhiễu:
 \subsubsection*{2. Tiền xử lý dữ liệu}
 \begin{itemize}
     \item \textbf{Chuẩn hóa Min-Max:} Mỗi chuỗi được chuẩn hóa riêng biệt về khoảng $[0, 1]$ bằng phương pháp Min-Max Scaling. 
-    Điều này giúp bộ phân loại bất biến với các phép biến đổi affine (cộng/nhân hằng số). 
-    Tuy nhiên, đối với nhiễu đuôi nặng (kịch bản S3 - Cauchy), Min-Max sẽ thất bại do các giá trị cực đoan, 
-    và nghiên cứu thay thế bằng phương pháp \textbf{chuẩn hóa mạnh} sử dụng trung bình cắt tỉa (trimmed mean) v
-    à độ lệch chuẩn cắt tỉa (trimmed std) với tỷ lệ cắt 10\% mỗi phía.
-    \item \textbf{Tăng cường dữ liệu (Data Augmentation):} Sử dụng kỹ thuật đảo ngược chuỗi $(x_n, x_{n-1}, \ldots, x_1)$. 
+    Điều này giúp bộ phân loại bất biến với các phép biến đổi affine (cộng hoặc nhân với hằng số). 
+    Tuy nhiên, đối với nhiễu đuôi nặng (kịch bản S3 - Cauchy), Min-Max sẽ thất bại do các giá trị cực đoan. 
+    Vì vậy, nghiên cứu thay thế bằng phương pháp \textbf{chuẩn hóa mạnh} sử dụng trung bình cắt tỉa (trimmed mean)
+    và độ lệch chuẩn cắt tỉa (trimmed std) với tỷ lệ cắt 10\% ở mỗi phía.
+    \item \textbf{Tăng cường dữ liệu (Data Augmentation):} Sử dụng kỹ thuật đảo ngược thứ tự các phần tử trong chuỗi đầu vào. 
     Vì chuỗi đảo ngược vẫn giữ nguyên nhãn phân loại (có hoặc không có điểm thay đổi), 
     kỹ thuật này nhân đôi kích thước tập huấn luyện một cách hiệu quả.
 \end{itemize}

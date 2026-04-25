@@ -1,74 +1,137 @@
 \section{Thực nghiệm và Kết quả đánh giá}
 
-Phần này trình bày các đánh giá toàn diện về hiệu suất của mô hình mạng nơ-ron được đề xuất, so sánh trực tiếp với các phương pháp thống kê truyền thống trên cả dữ liệu mô phỏng (synthetic data) và bộ dữ liệu điểm chuẩn thực tế (real-world benchmark data).
+Phần này trình bày các đánh giá toàn diện về hiệu suất của mô hình mạng nơ-ron được đề xuất, so sánh trực tiếp với các phương pháp thống kê 
+truyền thống trên cả dữ liệu mô phỏng và bộ dữ liệu điểm chuẩn thực tế.
 
 \subsection{Thí nghiệm 1: Dữ liệu mô phỏng với một điểm thay đổi (Single Change-Point)}
 
-Mục tiêu của thí nghiệm này là kiểm chứng cam kết lý thuyết: liệu mạng nơ-ron có thể hoạt động như một "nhà thống kê tự động" khi đối mặt với các loại nhiễu dữ liệu khác nhau hay không. 
+Mục tiêu của thí nghiệm này là kiểm chứng lý thuyết mà tác giả đưa ra: 
+liệu mạng nơ-ron có thể hoạt động như một "nhà thống kê tự động" khi đối mặt với các loại nhiễu dữ liệu khác nhau hay không. 
 
-\textbf{Thiết lập thí nghiệm:} Thuật toán sinh dữ liệu tạo ra chuỗi độ dài $n=100$ với 4 kịch bản (scenarios) nhiễu nền:
+\textbf{Thiết lập thí nghiệm:} Thuật toán sinh dữ liệu tạo ra chuỗi độ dài $n=100$ với 4 kịch bản nhiễu nền:
 \begin{itemize}
     \item \textbf{S1:} Nhiễu Gaussian độc lập $\mathcal{N}(0,1)$, không có tự tương quan ($\rho = 0$).
     \item \textbf{S1':} Nhiễu AR(1) với hệ số tự tương quan cố định $\rho = 0.7$.
     \item \textbf{S2:} Nhiễu AR(1) biến đổi theo thời gian, với $\rho_t \sim \text{Unif}[0, 1]$.
     \item \textbf{S3:} Nhiễu phân phối đuôi nặng Cauchy (Cauchy noise) với tỉ lệ $\text{scale} = 0.3$.
 \end{itemize}
-Kích thước tập huấn luyện $N$ được tăng dần từ 100 đến 1000 mẫu để khảo sát tốc độ hội tụ. Tập kiểm thử (Test Set) được tạo với kích thước $N_{\text{test}} = 30000$ (hoặc $N=2000$ cho các kiểm thử chi tiết). Quá trình huấn luyện sử dụng thuật toán tối ưu Adam~\cite{kingma2015adam}, tốc độ học 0.001 với hàm mất mát Binary Cross-Entropy. Mô hình mạng nơ-ron đa tầng (MLP) và tích chập (ResCNN) được đem ra so sánh với kiểm định CUSUM truyền thống (với ngưỡng được tinh chỉnh tối ưu bằng cross-validation) và mã nguồn tham chiếu gốc \textit{AutoCPD}.
+Hai loại đánh giá được thực hiện với các kích thước mẫu khác nhau:
+\begin{itemize}
+    \item \textbf{Khảo sát tốc độ hội tụ (Hình~\ref{fig:figure2}):} kích thước tập huấn luyện $N$ được 
+    tăng dần từ 100 đến 1000 mẫu, kiểm thử trên $N_{\text{test}} = 30000$ chuỗi.
+    \item \textbf{Bảng so sánh chính thức (Bảng~\ref{tab:tier2}):} các mô hình được huấn luyện 
+    trên $N_{\text{train}} = 10000$ chuỗi cố định và đánh giá trên tập kiểm thử $N_{\text{test}} = 2000$ 
+    chuỗi paper-faithful, sinh deterministic từ \texttt{data/paper\_faithful/} với hash SHA-256 lưu sẵn.
+\end{itemize}
+Quá trình huấn luyện sử dụng thuật toán tối ưu Adam~\cite{kingma2015adam}, với learning rate 0.001 với hàm loss Binary Cross-Entropy. 
+Mô hình mạng nơ-ron đa tầng (MLP, $h = 4\lfloor\log_2 n\rfloor = 24$ nơ-ron) và Residual CNN (21 khối) được so sánh trực tiếp 
+với kiểm định CUSUM truyền thống.
 
-\begin{figure}[h]
+\begin{figure}[ht]
     \centering
     \includegraphics[width=0.95\linewidth]{../../output/comparison/figure2_comparison.png}
-    \caption{Tỷ lệ phân loại sai (MER) so với kích thước tập huấn luyện $N$ trên 4 kịch bản nhiễu. CUSUM (đường đứt nét đen) là baseline thống kê cổ điển; các đường màu là các mạng MLP với cấu hình khác nhau.}
+    \caption{Tỷ lệ phân loại sai (MER) so với kích thước tập huấn luyện $N$ trên 4 kịch bản nhiễu. CUSUM (đường đứt nét đen)
+     là baseline thống kê cổ điển; các đường màu là các mạng MLP với cấu hình khác nhau.}
     \label{fig:figure2}
 \end{figure}
 
 \begin{table}[h]
     \centering
-    \caption{So sánh độ chính xác phát hiện trên ba kịch bản nhiễu (ngưỡng quyết định $0.5$, tập kiểm thử $N=2000$).}
+    \caption{So sánh độ chính xác phát hiện trên 4 kịch bản nhiễu (ngưỡng quyết định $0.5$, $N_{\text{train}}=10000$, $N_{\text{test}}=2000$). 
+    Dữ liệu sinh deterministic từ \texttt{data/paper\_faithful/}, hash SHA-256 để đảm bảo tính integrity được 
+    ghi trong \texttt{artifacts/synthetic/manifest.json}.}
     \label{tab:tier2}
-    \begin{tabular}{lcccc}
+    \begin{tabular}{lccc}
         \hline
-        \textbf{Kịch bản} & \textbf{PT MLP-pruned} & \textbf{PT MLP-full} & \textbf{AutoCPD MLP} & \textbf{PT ResCNN} \\
+        \textbf{Kịch bản} & \textbf{NN MLP} & \textbf{NN ResCNN} & \textbf{CUSUM} \\
         \hline
-        S1 (Gauss iid)                                 & 0.9000 & \textbf{0.9220} & 0.9010 & 0.8930 \\
-        S1' (AR(1), $\rho=0.7$)                        & \textbf{0.7985} & --- & 0.7705 & 0.7865 \\
-        S2 (AR(1), $\rho_t \sim \text{Unif}[0,1]$)     & \textbf{0.7485} & --- & --- & --- \\
-        S3 (Cauchy, scale=0.3)                         & 0.5500 & --- & 0.5000 & \textbf{0.9485} \\
+        S1 (Gauss iid)                                 & 0.9190 & \textbf{0.9255} & 0.8915 \\
+        S1' (AR(1), $\rho=0.7$)                        & 0.7290 & \textbf{0.7435} & 0.5005 \\
+        S2 (AR(1), $\rho_t \sim \text{Unif}[0,1]$)     & \textbf{0.7540} & 0.7525 & 0.5000 \\
+        S3 (Cauchy, scale=0.3)                         & 0.5970 & \textbf{0.9475} & 0.5110 \\
         \hline
     \end{tabular}
 \end{table}
 
-\textbf{Kết quả trên dữ liệu chuẩn (Nhiễu Gaussian):} Đúng như lý thuyết đã chứng minh, khi dữ liệu chỉ chứa nhiễu Gaussian đơn giản (S1), mạng nơ-ron đạt hiệu suất bám sát và ngang bằng với kiểm định CUSUM (Hình~\ref{fig:figure2}). Đặc biệt, cấu hình MLP-full ($2n-2$ nơ-ron) đạt độ chính xác cao nhất (0.9220), xác nhận mô hình học sâu có khả năng tái tạo hoàn hảo công thức toán học cổ điển. Đáng chú ý, bản cài đặt PyTorch (PT) của chúng tôi tuân thủ chặt chẽ phép chuẩn hóa Min-Max, khắc phục được sự cố suy giảm hiệu suất trên mã nguồn tham chiếu AutoCPD khi vô tình bỏ qua bước chuẩn hóa dữ liệu đầu vào.
+\begin{table}[h]
+    \centering
+    \caption{So sánh trực tiếp với MLP AutoCPD trên cùng split \texttt{paper\_faithful}.}
+    \label{tab:autocpd}
+    \begin{tabular}{lccc}
+        \hline
+        \textbf{Kịch bản} & \textbf{AutoCPD MLP} & \textbf{NN MLP} & \textbf{NN ResCNN} \\
+        \hline
+        S1 (Gauss iid)                                 & 0.9125 & 0.9190 & \textbf{0.9255} \\
+        S1' (AR(1), $\rho=0.7$)                        & 0.7335 & 0.7290 & \textbf{0.7435} \\
+        S2 (AR(1), $\rho_t \sim \text{Unif}[0,1]$)     & 0.7475 & \textbf{0.7540} & 0.7525 \\
+        S3 (Cauchy, scale=0.3)                         & 0.5000 & 0.5970 & \textbf{0.9475} \\
+        \hline
+    \end{tabular}
+\end{table}
 
-\textbf{Kết quả trên dữ liệu phức tạp (AR(1) và Cauchy):} Khi dữ liệu chứa nhiễu tự tương quan (S1', S2) hoặc nhiễu đuôi dài (S3) -- nơi các giả định của CUSUM bị vi phạm, mạng nơ-ron \textbf{vượt trội hoàn toàn so với bộ phân loại CUSUM}. Ở nhiễu Cauchy đuôi nặng, các mạng MLP cơ bản sụp đổ với độ chính xác chỉ nhỉnh hơn đoán ngẫu nhiên ($\sim 0.50$), trong khi mạng ResCNN sâu đạt tới $\textbf{0.9485}$ (Bảng~\ref{tab:tier2}), vượt xa $\sim 40$ điểm phần trăm. Thậm chí, nó còn đánh bại cả kiểm định Wilcoxon – vốn là tiêu chuẩn vàng để phát hiện thay đổi trong dữ liệu đuôi dài. Điều này khẳng định sức mạnh của kiến trúc mạng sâu trên các loại nhiễu phức tạp.
+\textbf{Kết quả trên dữ liệu chuẩn (Nhiễu Gaussian, S1):} Đúng như lý thuyết trong bài báo dự đoán, 
+khi dữ liệu chỉ chứa nhiễu Gaussian đơn giản, cả MLP và ResCNN đều đạt hiệu suất bám sát kiểm định CUSUM 
+(Hình~\ref{fig:figure2}). Trong Bảng~\ref{tab:tier2}, ResCNN đạt độ chính xác cao nhất ($\textbf{0.9255}$), 
+MLP đạt $0.9190$, và bản thân CUSUM cũng đạt $0.8915$ và tất cả đều ở mức xấp xỉ tiệm cận. 
+Điều này xác nhận mạng nơ-ron có khả năng \textbf{tái lập} công thức thống kê cổ điển khi dữ liệu phù hợp với giả định của nó.
 
-\subsection{Thí nghiệm 2: Phát hiện hỗn hợp nhiều loại thay đổi phức tạp (Multiple Change Types)}
+\textbf{Đối chiếu trực tiếp với mã nguồn tham chiếu AutoCPD:} Khác với các lần kiểm tra trước đây trên shared test set riêng trong thư mục \texttt{comparison/}, 
+ở bản hiện tại nhóm đã huấn luyện trực tiếp MLP TensorFlow/Keras của tác giả 
+(\url{https://github.com/Jieli12/AutoCPD}) trên đúng các split canonical \texttt{paper\_faithful} của repo. 
+Kết quả ở Bảng~\ref{tab:autocpd} cho thấy AutoCPD MLP bám rất sát bản PyTorch MLP trên S1, S1' và S2 
+($0.9125$ so với $0.9190$ ở S1, $0.7335$ so với $0.7290$ ở S1', và $0.7475$ so với $0.7540$ ở S2). 
+Điều này củng cố rằng bản tái cài đặt PyTorch của nhóm là nhất quán với hướng tiếp cận gốc của tác giả ở các kịch bản Gaussian và AR.
 
-Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bình. Thí nghiệm này đánh giá khả năng của mạng Convolutional Neural Network thặng dư sâu (ResCNN với 21 khối residual blocks) trong việc nhận diện một tập dữ liệu gồm 10,000 chuỗi chứa \textbf{hỗn hợp các thay đổi về giá trị trung bình, phương sai và độ dốc}. 
+\textbf{Kết quả trên dữ liệu phức tạp (AR(1) và Cauchy):} Khi giả định của CUSUM bị vi phạm, lợi thế của mạng nơ-ron trở nên rõ rệt:
+\begin{itemize}
+    \item Trên \textbf{S1' và S2} (nhiễu tự tương quan), CUSUM sụp đổ về xác suất ngẫu nhiên ($\sim 0.50$ với FPR $\approx 1.0$, 
+    gần như luôn báo có thay đổi). Mạng nơ-ron giữ được độ chính xác trên 0.72 ở cả hai biến thể MLP và ResCNN.
+    \item Trên \textbf{S3} (nhiễu Cauchy đuôi nặng), sự khác biệt kiến trúc trở nên cực kỳ rõ. 
+    AutoCPD MLP sụp về mức ngẫu nhiên đúng nghĩa ($0.5000$ với FPR $= 1.0$), MLP PyTorch chỉ đạt $0.5970$, 
+    trong khi ResCNN sâu đạt tới $\textbf{0.9475}$ và vượt CUSUM gần $\sim 44$ điểm phần trăm. 
+    So sánh trực tiếp này cho thấy giới hạn không chỉ nằm ở framework cài đặt, mà nằm ở chính lựa chọn MLP nông và tiền xử lý Min-Max khi gặp nhiễu đuôi nặng.
+    Đây chính là minh chứng thực nghiệm cho luận điểm trung tâm của bài báo: 
+    trên các phân phối nhiễu mà thống kê cổ điển không có công thức tối ưu, các mạng sâu mới phát huy hết sức mạnh. 
+    (Theo bài báo gốc~\cite{li2024automatic}, ResCNN còn vượt cả kiểm định phi tham số Wilcoxon trong cùng tình huống này, tuy nhiên nhóm chưa 
+    thực hiện việc trực tiếp so sánh đó được.)
+\end{itemize}
 
-\textbf{Thiết lập thí nghiệm \& Kết quả:} 
-Mô hình ResCNN được huấn luyện để phân loại đồng thời các loại thay đổi hỗn hợp và được đem ra so sánh với hai phương pháp thống kê mạnh nhất hiện nay: \textit{Oracle likelihood} (bộ phân loại lý tưởng, đã biết trước loại thay đổi cần tìm) và \textit{Adaptive likelihood} (bộ phân loại thích ứng kết hợp nhiều thống kê kiểm định). 
+\subsection{Thí nghiệm 2: Phát hiện hỗn hợp nhiều loại thay đổi phức tạp (trích từ bài báo gốc)}
 
-Kết quả đánh giá chỉ ra rằng: mạng ResCNN đạt \textbf{độ chính xác phân loại tương đương với phương pháp Adaptive ở các tín hiệu yếu, và vươn lên đạt độ chính xác cao hơn ở các tín hiệu mạnh}. Điều này chứng minh mạng CNN sâu có khả năng tự động trích xuất các đặc trưng đa dạng của tín hiệu chuỗi thời gian mà không cần bất kỳ sự can thiệp thủ công hay tiền xử lý đặc tả nào từ con người.
+Trong thực tế, sự thay đổi không chỉ nằm ở giá trị trung bình. Bài báo gốc~\cite{li2024automatic} thiết kế một thí nghiệm bổ sung
+ trên tập dữ liệu gồm 10\,000 chuỗi chứa \textbf{hỗn hợp các thay đổi về giá trị trung bình, phương sai và độ dốc}, 
+ đánh giá ResCNN cùng hai phương pháp thống kê mạnh: \textit{Oracle likelihood} 
+ (bộ phân loại lý tưởng, đã biết trước loại thay đổi cần tìm) và \textit{Adaptive likelihood} (kết hợp nhiều thống kê kiểm định).
+
+\textbf{Lưu ý phạm vi:} Thí nghiệm này \emph{không nằm trong phạm vi tái cài đặt} của nhóm, chúng em tóm lược kết quả từ bài báo gốc nhằm
+ cho thấy bức tranh đầy đủ về khả năng của kiến trúc ResCNN. 
+ Theo các tác giả, ResCNN đạt độ chính xác phân loại \textbf{tương đương Adaptive ở tín hiệu yếu và vượt trội ở tín hiệu mạnh}, 
+ củng cố lập luận rằng mạng CNN sâu có thể tự động trích xuất đặc trưng cho các loại thay đổi đa dạng mà không cần thiết kế thống kê 
+ thủ công cho từng trường hợp.
 
 \subsection{Thí nghiệm 3: Ứng dụng thực tế trên bộ dữ liệu HASC (Real-world Application)}
 
-Để khẳng định tính ứng dụng của phương pháp đề xuất, chúng tôi áp dụng mô hình ResCNN lên bộ dữ liệu thế giới thực \textbf{HASC (Human Activity Sensing Consortium)}~\cite{hasc2011}. 
+Để khẳng định tính ứng dụng của phương pháp đề xuất, chúng em áp dụng mô hình ResCNN lên bộ dữ liệu thế giới thực
+ \textbf{HASC (Human Activity Sensing Consortium)}~\cite{hasc2011}. 
 
-\textbf{Bối cảnh:} Bộ dữ liệu này chứa các phép đo cảm biến chuyển động 3 chiều phức tạp (gia tốc kế theo trục x, y, z) lấy mẫu ở tần số 100Hz, ghi lại chuỗi hoạt động vật lý của con người với 28 nhãn như 'đứng yên' (stay), 'đi bộ' (walk), 'chạy bộ' (jog), 'bước lên cầu thang' (stair up), v.v.
+\textbf{Bối cảnh:} Bộ dữ liệu này chứa các phép đo cảm biến chuyển động 3 chiều phức tạp 
+(gia tốc kế theo trục x, y, z) lấy mẫu ở tần số 100Hz, ghi lại chuỗi hoạt động vật lý của con người với 28 nhãn như 
+'đứng yên' (stay), 'đi bộ' (walk), 'chạy bộ' (jog), 'bước lên cầu thang' (stair up), v.v.
 
-\textbf{Bài toán \& Cách tiếp cận:} Thách thức đặt ra là phải phát hiện khoảnh khắc chính xác mà một người chuyển từ trạng thái hoạt động này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng \texttt{person101}--\texttt{person105} trong 5 epoch.
+\textbf{Bài toán \& Cách tiếp cận:} Thách thức đặt ra là phải phát hiện khoảnh khắc chính xác mà một người chuyển từ trạng thái hoạt động
+ này sang hoạt động khác. Dữ liệu được cắt thành các cửa sổ trượt kích thước $n=700$ (tương đương 7 giây). 
+ Hệ thống định nghĩa 30 nhãn (6 nhãn thuần - pure state, và 24 nhãn chuyển tiếp - transition state). 
+ Mạng Deep Residual CNN (đầu vào 3 kênh, đầu ra 30 lớp) được huấn luyện trên 13380 cửa sổ trích xuất từ các đối tượng
+  \texttt{person101}--\texttt{person105} trong 5 epoch.
 
-\textbf{Kết quả định vị:} 
-Mạng nơ-ron không chỉ phân loại các tín hiệu cảm biến với độ chính xác cao, mà khi kết hợp với \textbf{Thuật toán Cửa sổ trượt (Sliding window algorithm - Algorithm 1)}, nó đã quét qua toàn bộ chuỗi dữ liệu dài và \textbf{nhận diện, định vị thành công vị trí của rất nhiều điểm thay đổi khác nhau trong một chuỗi hoạt động liên tục}.
+\textbf{Kết quả định vị:}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.95\linewidth]{../../output/hasc_algo1.png}
-    \caption{Áp dụng Thuật toán 1 lên một chuỗi cảm biến HASC trong tập kiểm thử. \textbf{Trên:} Tín hiệu gia tốc 3 trục $(x, y, z)$ với các điểm thay đổi thực (đường đỏ) đánh dấu thời điểm con người chuyển đổi hoạt động. \textbf{Dưới:} Tín hiệu trung bình trượt $\bar{L}_i$ do mô hình ResCNN sinh ra; các đỉnh vượt ngưỡng $\gamma=0.5$ tương ứng với các điểm thay đổi ước lượng $\hat{\tau}$ (đường xanh).}
-    \label{fig:hasc}
-\end{figure}
+% =====================================================================
+% TODO: Phần kết quả thí nghiệm HASC sẽ được tóm lược lại bởi một thành
+% viên khác trong nhóm. Chừa khoảng trống để bổ sung sau, dự kiến gồm:
+%   - Hình minh hoạ định vị qua Thuật toán 1 (output/hasc_algo1.png)
+%   - Số điểm thay đổi tìm được và độ lệch so với ground-truth
+%   - Nhận xét về khả năng tổng quát hoá sang dữ liệu thế giới thực
+% =====================================================================
 
-Như Hình~\ref{fig:hasc} thể hiện, khi chạy Thuật toán 1 trên chuỗi kiểm thử \texttt{HASC1013-acc.csv} (dài $\sim 100$ giây), mô hình đánh giá 11301 cửa sổ trượt và sinh ra tín hiệu trung bình trượt $\bar{L}_i$ với 4 đỉnh sắc nét. Các điểm thay đổi ước lượng $\hat{\tau} = \{26.51, 36.20, 65.30, 95.58\}$ giây trùng khớp chính xác với 4 thời khắc chuyển hoạt động thực tế (đường đỏ). 
-
-Kết quả này hoàn thiện trọn vẹn đường ống giải pháp: mạng học sâu hoàn toàn có thể hoạt động như một nhà thống kê tự động để giải quyết các bài toán công nghiệp thực tế với độ phức tạp cao, cung cấp phương tiện chẩn đoán đáng tin cậy.
+\textit{[Phần kết quả định vị HASC sẽ được bổ sung.]}

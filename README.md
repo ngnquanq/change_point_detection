@@ -2,7 +2,7 @@
 
 A PyTorch reimplementation of the framework from:
 
-> Jie Li, Paul Fearnhead, Piotr Fryzlewicz, Tengyao Wang, *"Automatic change-point detection in time series via deep learning"*, JRSS B (2024).
+> Jie Li, Paul Fearnhead, Piotr Fryzlewicz, Tengyao Wang, *"Automatic change-point detection in time series via deep learning"*
 
 The core idea: recast offline change-point detection as **supervised binary classification**. A neural network is trained to predict whether a short sequence of length *n* contains a change point (Y=1) or not (Y=0). Once trained, a sliding-window algorithm localizes change points in longer series.
 
@@ -25,6 +25,16 @@ Fresh results on the canonical `paper_faithful` test splits are:
 | `mlp_s3` | 0.5970 | 0.7730 | 0.5790 |
 | `rescnn_s3_paper` | 0.9475 | 0.9220 | 0.0270 |
 
+Direct comparison against the authors' TensorFlow/Keras AutoCPD MLP on those
+same canonical splits is:
+
+| Experiment | Test Acc | Power | FPR |
+|---|---:|---:|---:|
+| `autocpd_s1_paper` | 0.9125 | 0.8710 | 0.0460 |
+| `autocpd_s1prime_paper` | 0.7335 | 0.6960 | 0.2290 |
+| `autocpd_s2_paper` | 0.7475 | 0.6840 | 0.1890 |
+| `autocpd_s3_paper` | 0.5000 | 1.0000 | 1.0000 |
+
 The shared CUSUM baseline on those same canonical test splits is:
 
 | Scenario | CUSUM Acc | CUSUM Power | CUSUM FPR |
@@ -38,8 +48,9 @@ These numbers are generated, not hand-maintained. The canonical teacher-facing s
 
 - `artifacts/synthetic/summary.md`
 - `artifacts/synthetic/manifest.json`
+- `comparison/results/AUTOCPD_PAPER_FAITHFUL_SUMMARY.md`
 
-Those files are regenerated from the fixed synthetic datasets and the current trained artifacts. On these canonical splits, ResCNN is slightly ahead on `S1`, clearly better on `S1'`, tied on `S2`, and dramatically better on `S3`. Localization is intentionally kept out of this fixed-window table; the deterministic localization demo is regenerated separately in `models/mlp_s1/plots/fig4_localization_demo.png`.
+Those files are regenerated from the fixed synthetic datasets and the current trained artifacts. On these canonical splits, ResCNN is slightly ahead on `S1`, clearly better on `S1'`, tied on `S2`, and dramatically better on `S3`. The direct AutoCPD rerun is close to the PyTorch MLP on `S1`, `S1'`, and `S2`, but collapses on heavy-tailed `S3` under the original shallow-MLP + min-max setup. Localization is intentionally kept out of this fixed-window table; the deterministic localization demo is regenerated separately in `models/mlp_s1/plots/fig4_localization_demo.png`.
 
 ---
 

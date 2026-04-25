@@ -1,0 +1,28 @@
+{
+  "experiment": "autocpd_s2_paper",
+  "scenario": "s2",
+  "noise_type": "S2",
+  "train_path": "data/paper_faithful/s2_train.npz",
+  "test_path": "data/paper_faithful/s2_test.npz",
+  "preprocessing": "per-sequence min-max scaling (AutoCPD paper/demo style)",
+  "architecture": {
+    "framework": "TensorFlow/Keras (vendor AutoCPD)",
+    "model": "general_simple_nn",
+    "hidden_layers": 2,
+    "hidden_width": 50,
+    "num_classes": 2
+  },
+  "training": {
+    "seed": 2022,
+    "epochs": 200,
+    "max_epochs": 200,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "best_val_accuracy": 0.7599999904632568
+  },
+  "metrics": {
+    "detection_accuracy": 0.7475,
+    "power": 0.684,
+    "type1_error": 0.189
+  }
+}

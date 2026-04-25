@@ -1,0 +1,9 @@
+{
+  "experiment": "autocpd_s2_paper",
+  "scenario": "s2",
+  "noise_type": "S2",
+  "framework": "AutoCPD TensorFlow/Keras",
+  "train_path": "data/paper_faithful/s2_train.npz",
+  "test_path": "data/paper_faithful/s2_test.npz",
+  "preprocessing": "per-sequence min-max scaling (AutoCPD paper/demo style)"
+}
