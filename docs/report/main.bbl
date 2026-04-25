@@ -3,23 +3,17 @@
 \bibitem{he2016resnet}
 Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
 \newblock Deep residual learning for image recognition.
-\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and
-  Pattern Recognition (CVPR)}, pages 770--778, 2016.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 770--778, 2016.
 
 \bibitem{hasc2011}
-Nobuo Kawaguchi, Nobuhiro Ogawa, Yohei Iwasaki, Katsuhiko Kaji, Tsutomu Terada,
-  Kazuya Murao, Sozo Inoue, Yoshihiro Kawahara, Yasuyuki Sumi, and Nobuhiko
-  Nishio.
-\newblock {HASC} challenge: Gathering large scale human activity corpus for the
-  real-world activity understandings.
-\newblock In {\em Proceedings of the 2nd Augmented Human International
-  Conference (AH '11)}, 2011.
+Nobuo Kawaguchi, Nobuhiro Ogawa, Yohei Iwasaki, Katsuhiko Kaji, Tsutomu Terada, Kazuya Murao, Sozo Inoue, Yoshihiro Kawahara, Yasuyuki Sumi, and Nobuhiko Nishio.
+\newblock {HASC} challenge: Gathering large scale human activity corpus for the real-world activity understandings.
+\newblock In {\em Proceedings of the 2nd Augmented Human International Conference (AH '11)}, 2011.
 
 \bibitem{kingma2015adam}
 Diederik~P. Kingma and Jimmy Ba.
 \newblock {Adam}: A method for stochastic optimization.
-\newblock In {\em 3rd International Conference on Learning Representations
-  (ICLR)}, 2015.
+\newblock In {\em 3rd International Conference on Learning Representations (ICLR)}, 2015.
 
 \bibitem{autocpd2024}
 Jie Li.
@@ -30,8 +24,7 @@ Jie Li.
 \bibitem{li2024automatic}
 Jie Li, Paul Fearnhead, Piotr Fryzlewicz, and Tengyao Wang.
 \newblock Automatic change-point detection in time series via deep learning.
-\newblock {\em Journal of the Royal Statistical Society Series B: Statistical
-  Methodology}, 86(2):273--285, 2024.
+\newblock {\em Journal of the Royal Statistical Society Series B: Statistical Methodology}, 86(2):273--285, 2024.
 
 \bibitem{page1954cusum}
 E.~S. Page.
