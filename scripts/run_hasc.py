@@ -1,16 +1,3 @@
-#!/usr/bin/env python
-"""
-Run HASC change-point detection (Section 6 of the paper).
-
-Expects pre-split data in data/hasc/splits/ (created by scripts/split_hasc.py):
-    train.npz, val.npz, meta.json
-
-Usage:
-    python scripts/split_hasc.py          # run once to create splits
-    python scripts/run_hasc.py            # train on splits
-    python scripts/run_hasc.py --epochs 200 --patience 30 --scheduler cosine
-"""
-
 import argparse
 import json
 import os

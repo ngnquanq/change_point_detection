@@ -12,7 +12,9 @@ The core idea: recast offline change-point detection as **supervised binary clas
 
 ## Results at a Glance
 
-Fresh results on the canonical `paper_faithful` test splits are:
+### Experiment 1 — Synthetic Data (Single Change-Point)
+
+Fresh results on the canonical `paper_faithful` test splits:
 
 | Experiment | Test Acc | Power | FPR |
 |---|---:|---:|---:|
@@ -25,8 +27,7 @@ Fresh results on the canonical `paper_faithful` test splits are:
 | `mlp_s3` | 0.5970 | 0.7730 | 0.5790 |
 | `rescnn_s3_paper` | 0.9475 | 0.9220 | 0.0270 |
 
-Direct comparison against the authors' TensorFlow/Keras AutoCPD MLP on those
-same canonical splits is:
+Direct comparison against the authors' TensorFlow/Keras AutoCPD MLP on those same canonical splits:
 
 | Experiment | Test Acc | Power | FPR |
 |---|---:|---:|---:|
@@ -35,7 +36,7 @@ same canonical splits is:
 | `autocpd_s2_paper` | 0.7475 | 0.6840 | 0.1890 |
 | `autocpd_s3_paper` | 0.5000 | 1.0000 | 1.0000 |
 
-The shared CUSUM baseline on those same canonical test splits is:
+The shared CUSUM baseline on those same canonical test splits:
 
 | Scenario | CUSUM Acc | CUSUM Power | CUSUM FPR |
 |---|---:|---:|---:|
@@ -54,6 +55,35 @@ Those files are regenerated from the fixed synthetic datasets and the current tr
 
 ---
 
+### Experiment 3 — Real-world Application: HASC Dataset
+
+The ResCNN model is applied to the **HASC (Human Activity Sensing Consortium)** dataset to demonstrate real-world generalization. The model is trained to classify 30 activity states (6 pure states + 24 transition states) using 3-channel accelerometer windows of length 700 (7 seconds at 100 Hz).
+
+**Training setup:**
+- Architecture: Deep Residual CNN (3-channel input, 30-class output)
+- Training samples: 13,380 windows from persons `person101`–`person105`
+- Optimizer: Adam (lr=0.001, weight_decay=1e-4)
+- Scheduler: CosineAnnealingLR
+- Early stopping: patience=20 epochs
+- TensorBoard logs: `models/hasc`
+
+**Final validation results (best model):**
+
+| Metric | Value |
+|---|---:|
+| Val Loss | 0.1749 |
+| Val Accuracy | **0.9621** |
+| Val F1 (Macro) | 0.9042 |
+| Val F1 (Weighted) | **0.9608** |
+
+**Learning curves:**
+
+![HASC learning curves](docs/report/hasc_learning_curve.png)
+
+The model converges quickly and maintains consistently high validation accuracy (>90%) and F1-score throughout training with no signs of overfitting.
+
+---
+
 ## Visualizations
 
 ### Canonical Dataset Overview
@@ -65,7 +95,7 @@ This overview is generated directly from the canonical `paper_faithful` train sp
 - **S1'/S2** (AR(1)-style dependence) — autocorrelated noise
 - **S3** (Cauchy heavy-tail) — extreme spikes; uses the repo's robust preprocessing path
 
-### Training Curves
+### Training Curves (Synthetic)
 
 ![Training curves](models/mlp_s1/plots/fig2_training_curves.png)
 
@@ -76,6 +106,8 @@ For the fresh canonical run, `mlp_s1` trained for 118 epochs and reached best va
 ![Canonical comparison](output/comparison/figure2_comparison.png)
 
 This chart is generated from the same saved `eval_results.json` files that back the README tables. It compares `CUSUM`, the authors' `AutoCPD MLP`, the PyTorch `MLP`, and `ResCNN` on the canonical `paper_faithful_test` splits using the three metrics reported in this repo: detection accuracy, power, and false positive rate.
+
+---
 
 ## Architecture
 
@@ -93,31 +125,46 @@ Hidden layer width `h` has two variants:
 
 For n=100: full → h=198 (~20K params), pruned → h=24 (~2.4K params).
 
-### Model 2 — Residual CNN (complex/multiple changes)
+### Model 2 — Residual CNN (complex/multiple changes & HASC)
 
 ```
-Input x ∈ ℝ^(1×n)
+Input x ∈ ℝ^(C×n)     [C=1 for synthetic, C=3 for HASC]
     ↓
-Conv1d(1→32, k=1)           ← input projection
+Conv1d(C→32, k=1, bias=False)      ← input projection
     ↓
-ResidualBlock × 7            (32→32 channels)
+ResidualBlock × 7                   (32→32 channels)
     ↓
-ResidualBlock × 1            (32→64 channels)  ← channel expansion
+ResidualBlock × 1                   (32→64 channels)  ← channel expansion at block 7
     ↓
-ResidualBlock × 13           (64→64 channels)
+ResidualBlock × 13                  (64→64 channels)
     ↓
-AdaptiveAvgPool1d(1)         ← collapse temporal dim
+AdaptiveAvgPool1d(1) → flatten      → (B, 64)
     ↓
-Linear(64→64) → ReLU → Linear(64→1)   [raw logit]
+      [Binary head]                         [Multi-class head — HASC]
+Linear(64→50) → ReLU → Dropout(0.3)  Linear(64→50) → ReLU → Dropout(0.3)
+Linear(50→40) → ReLU → Dropout(0.3)  Linear(50→40) → ReLU → Dropout(0.3)
+Linear(40→30) → ReLU → Dropout(0.3)  Linear(40→30) → ReLU → Dropout(0.3)
+Linear(30→20) → ReLU → Dropout(0.3)  Linear(30→K)            [K=30 logits]
+Linear(20→10) → ReLU → Dropout(0.3)
+Linear(10→1)                [raw logit]
 ```
 
-Each residual block: `Conv1d → BN → ReLU → Conv1d → BN + skip → ReLU`.
-Same-padding (`pad = kernel_size // 2`) preserves sequence length throughout.
-The model is length-agnostic via `AdaptiveAvgPool`.
+**ResidualBlock** (`in_ch → out_ch`, kernel_size=8, pad=4):
+```
+x ──────────────────────── skip (Identity or Conv1d 1×1) ──────┐
+│                                                                │
+└─ Conv1d(k=8,p=4) → BN → ReLU → Conv1d(k=8,p=4) → BN ───────(+)→ ReLU
+```
+- Same-padding (`pad = kernel_size // 2 = 4`) preserves sequence length throughout.
+- Channel expansion happens at block index `n_blocks // 3 = 7` (32 → 64).
+- Skip uses 1×1 Conv when `in_ch ≠ out_ch`, otherwise `Identity`.
+- The model is length-agnostic thanks to `AdaptiveAvgPool1d`.
 
 ---
 
 ## Data Pipeline
+
+### Synthetic
 
 ```
 simulate_dataset(N, n, noise_type)
@@ -142,9 +189,26 @@ For the canonical reproducibility path, the training and test inputs come from t
 
 Each file contains `X`, `y`, and `taus`. The matching `.hash.txt` files are used by `scripts/generate_reproducible_data.py --verify`.
 
+### HASC (Real-world)
+
+```
+raw HASC CSV files (100 Hz, 3-axis accelerometer)
+    ↓
+scripts/split_hasc.py        ← segment by person, sliding windows (n=700, stride=50),
+                                label pure/transition states → train.npz + val.npz + meta.json
+    ↓
+scripts/run_hasc.py          ← train ResidualCNN (3-channel, 30-class),
+                                TensorBoard logging, early stopping, best model checkpoint
+    ↓
+models/hasc/best_model.pt
+output/hasc_runs2/           ← TensorBoard event files
+```
+
 ---
 
 ## Training
+
+### Synthetic experiments
 
 | Hyperparameter | Value |
 |---|---|
@@ -156,6 +220,19 @@ Each file contains `X`, `y`, and `taus`. The matching `.hash.txt` files are used
 | Early stopping | patience = 20 epochs |
 
 Models output raw logits. Sigmoid is applied post-hoc at inference only — `BCEWithLogitsLoss` fuses sigmoid + cross-entropy in log-space for numerical stability.
+
+### HASC experiment
+
+| Hyperparameter | Value |
+|---|---|
+| Loss | CrossEntropyLoss |
+| Optimizer | Adam (weight_decay=1e-4) |
+| Learning rate | 0.001 |
+| Scheduler | CosineAnnealingLR |
+| Epochs | up to 100 |
+| Batch size | 128 |
+| Grad clip | 1.0 |
+| Early stopping | patience = 20 epochs |
 
 ---
 
@@ -187,14 +264,18 @@ change_point_detection/
 │   ├── rescnn_s1_paper.yaml
 │   ├── rescnn_s1prime_paper.yaml
 │   ├── rescnn_s2_paper.yaml
-│   └── rescnn_s3_paper.yaml
+│   ├── rescnn_s3_paper.yaml
+│   └── rescnn_hasc.yaml   HASC experiment config (3-channel, 30-class)
 ├── data/
-│   └── paper_faithful/    Canonical reproducible synthetic train/test splits
-│       ├── s1_*.npz       Data used for the S1 rows in the README tables
-│       ├── s1prime_*.npz  Data used for the S1' rows in the README tables
-│       ├── s2_*.npz       Data used for the S2 rows in the README tables
-│       ├── s3_*.npz       Data used for the S3 rows in the README tables
-│       └── plots/         Canonical dataset overview figures
+│   ├── paper_faithful/    Canonical reproducible synthetic train/test splits
+│   │   ├── s1_*.npz       Data used for the S1 rows in the README tables
+│   │   ├── s1prime_*.npz  Data used for the S1' rows in the README tables
+│   │   ├── s2_*.npz       Data used for the S2 rows in the README tables
+│   │   ├── s3_*.npz       Data used for the S3 rows in the README tables
+│   │   └── plots/         Canonical dataset overview figures
+│   └── hasc/
+│       ├── splits/        Pre-split HASC windows (train.npz, val.npz, meta.json)
+│       └── raw/           Raw HASC CSV files (not committed)
 ├── models/
 │   ├── mlp_s1/            Canonical MLP artifacts; metrics in eval_results.json
 │   ├── mlp_s1prime/
@@ -213,14 +294,24 @@ change_point_detection/
 │       ├── summary.md     Canonical MLP/ResCNN summary shown in the README
 │       └── manifest.json  Dataset hashes and artifact provenance
 ├── output/
-│   └── comparison/
-│       ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
-│       └── comparison_results.json   Metrics used to draw that chart
+│   ├── comparison/
+│   │   ├── figure2_comparison.png    Canonical comparison chart shown in Chapter 4
+│   │   └── comparison_results.json   Metrics used to draw that chart
+├── models/
+│   ├── ...
+│   └── hasc/
+│       └── best_model.pt             Best HASC checkpoint (Val Acc=0.9621)
+│   └── hasc_runs2/                   TensorBoard event files for HASC training
 ├── comparison/
 │   ├── results/
 │   │   └── AUTOCPD_PAPER_FAITHFUL_SUMMARY.md   AutoCPD table shown in the README
 │   └── scripts/
 │       └── train_autocpd_paper_faithful.py     Runs the author's MLP on canonical splits
+├── docs/
+│   └── report/
+│       ├── main.tex                  Main LaTeX report
+│       ├── 4.experiment.tex          Experiment section (includes HASC results)
+│       └── hasc_learning_curve.png   HASC learning curves (extracted from TensorBoard)
 ├── src/
 │   ├── config.py          ExperimentConfig dataclasses + YAML I/O
 │   ├── data/
@@ -230,7 +321,7 @@ change_point_detection/
 │   │   └── dataset.py     PyTorch Dataset + DataLoader factory
 │   ├── models/
 │   │   ├── mlp.py         MLPDetector (full / pruned variants)
-│   │   └── rescnn.py      ResidualCNN
+│   │   └── rescnn.py      ResidualCNN (shared by synthetic & HASC)
 │   ├── training/
 │   │   └── trainer.py     Training loop, checkpointing, early stopping
 │   ├── inference/
@@ -242,6 +333,8 @@ change_point_detection/
 │   ├── reproduce_synthetic.py       Canonical one-command synthetic pipeline
 │   ├── generate_reproducible_data.py
 │   ├── plot_canonical_synthetic_comparison.py
+│   ├── split_hasc.py                Preprocess raw HASC → sliding windows + train/val split
+│   ├── run_hasc.py                  Train ResCNN on HASC (30-class, TensorBoard logging)
 │   ├── train.py
 │   ├── evaluate.py
 │   ├── locate.py
@@ -267,7 +360,7 @@ conda env create -f environment.synthetic.yml
 conda activate change-point-synthetic
 ```
 
-### One command
+### Synthetic experiments (one command)
 
 ```bash
 python scripts/reproduce_synthetic.py
@@ -281,7 +374,28 @@ That command will:
 4. regenerate the teacher-facing synthetic plots
 5. write `artifacts/synthetic/manifest.json` and `artifacts/synthetic/summary.md`
 
-### Step-by-step breakdown
+### HASC experiment
+
+```bash
+# Step 1: prepare pre-split HASC windows
+python scripts/split_hasc.py --hasc_dir data/hasc --out_dir data/hasc/splits
+
+# Step 2: train the 30-class ResCNN
+python scripts/run_hasc.py \
+    --split_dir data/hasc/splits \
+    --epochs 100 \
+    --batch_size 128 \
+    --lr 0.001 \
+    --scheduler cosine \
+    --device auto
+
+# Step 3: monitor training (optional)
+tensorboard --logdir output/hasc_runs2
+```
+
+Best model checkpoint is saved to `models/hasc/best_model.pt`.
+
+### Step-by-step breakdown (synthetic)
 
 ```bash
 python scripts/generate_reproducible_data.py
