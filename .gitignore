@@ -43,3 +43,12 @@ docs/report/**.fls
 *.Zone.Identifier
 spliteed.*
 comparison/
+
+slides.aux
+slides.log
+slides.toc
+slides.blg
+slides.bbl
+slides.nav
+slides.snm
+slides.out
